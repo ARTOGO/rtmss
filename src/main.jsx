@@ -48,9 +48,11 @@ if ("serviceWorker" in navigator && !import.meta.env.DEV) {
 (function installViewportFix() {
   const root = document.documentElement;
   const apply = () => {
+    // take the largest height any API reports: in standalone mode some of
+    // them exclude the bottom safe area (home indicator), which left a band
     const vv = window.visualViewport;
-    const h = Math.round(vv ? vv.height : window.innerHeight);
-    const w = Math.round(vv ? vv.width : window.innerWidth);
+    const h = Math.round(Math.max(window.innerHeight || 0, vv ? vv.height : 0, document.documentElement.clientHeight || 0));
+    const w = Math.round(Math.max(window.innerWidth || 0, vv ? vv.width : 0, document.documentElement.clientWidth || 0));
     if (h > 0 && w > 0) {
       root.style.setProperty("--app-h", h + "px");
       root.style.setProperty("--app-w", w + "px");

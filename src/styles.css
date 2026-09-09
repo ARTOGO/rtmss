@@ -19,6 +19,7 @@
   /* heights are % of the stage (the real visible area: on iPad Safari 100vh
      includes the space behind the toolbars) and always leave the top bar free */
   --topbar-h: calc(3.2vh + 6vh + env(safe-area-inset-top, 0px));
+  --sab: env(safe-area-inset-bottom, 0px);
   --sheet-h: 41%;                                          /* collapsed */
   --sheet-h-expanded: calc(100% - var(--topbar-h) - 2vh); /* pulled up: full transcript */
   --ease-out: cubic-bezier(.2,.8,.2,1);
@@ -29,8 +30,12 @@ html,body{
   margin:0; padding:0; width:100%; height:100%;
   min-height:100dvh;
   overflow:hidden;
-  /* same sweep as the water so any strip the fixed layer misses is not a flat band */
-  background:var(--teal) linear-gradient(162deg, #0a4a48 0%, var(--teal) 14%, #5f9092 30%, var(--mist) 42%, #c4c4a8 54%, var(--cream) 62%, #cfa07a 74%, #b46b4c 86%, var(--rust) 100%) fixed;
+  /* same sweep as the water so any strip the fixed layer misses is not a flat band;
+     no repeat, and the fill colour past the image is the water's bottom tone */
+  background-color:#b46b4c;
+  background-image:linear-gradient(162deg, #0a4a48 0%, var(--teal) 14%, #5f9092 30%, var(--mist) 42%, #c4c4a8 54%, var(--cream) 62%, #cfa07a 74%, #b46b4c 86%, var(--rust) 100%);
+  background-repeat:no-repeat;
+  background-size:100% 100%;
   font-family:var(--sans);
   color:var(--paper);
   user-select:none;
