@@ -17,10 +17,6 @@ function toast(text) {
   requestAnimationFrame(() => el.classList.add("show"));
   setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 600); }, 4500);
 }
-const standalone = () =>
-  (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
-  window.navigator.standalone === true;
-
 if ("serviceWorker" in navigator && !import.meta.env.DEV) {
   navigator.serviceWorker.addEventListener("message", (e) => {
     const msg = e.data || {};
@@ -43,6 +39,10 @@ if ("serviceWorker" in navigator && !import.meta.env.DEV) {
     });
   });
 }
+
+const standalone = () =>
+  (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+  window.navigator.standalone === true;
 
 /* ------------------------------------------------------------------
    Viewport sizing. iPadOS home-screen web apps keep a stale layout
@@ -67,23 +67,28 @@ if ("serviceWorker" in navigator && !import.meta.env.DEV) {
     const vv = window.visualViewport;
     const h = Math.round(Math.max(window.innerHeight || 0, vv ? vv.height : 0, document.documentElement.clientHeight || 0));
     const w = Math.round(Math.max(window.innerWidth || 0, vv ? vv.width : 0, document.documentElement.clientWidth || 0));
-    /* iOS home-screen apps: the layout viewport can be shorter than the window,
-       which leaves a strip of bare page background under everything (the band
-       reported on iPhone: window 812 vs screen 874, bottom inset 34). Grow the
-       stage by at most that inset, and only when the screen really is taller —
-       so devices without the problem (iPad: window 820 = screen 820) are left
-       exactly as they are. */
+    /* Two different heights are needed on iOS home-screen apps:
+
+       --app-h  the layout viewport (iPhone 16 Pro: 812). Fixed layers are
+                clipped to it, so all CONTENT must live inside it.
+       --bg-h   the real window (that phone: screen 874). The strip between the
+                two can only be painted by the root background, so the water
+                canvas and the CSS gradient are both drawn over --bg-h; the
+                strip then continues the same sweep instead of showing a band.
+
+       --bg-h only grows in a standalone (installed) app, and only up to the
+       screen size, so browsers and iPad (window 820 = screen 820) are
+       untouched. */
     const sc = window.screen || {};
-    const scMin = Math.min(sc.width || 0, sc.height || 0);
-    const scMax = Math.max(sc.width || 0, sc.height || 0);
-    const screenH = w > h ? scMin : scMax;
+    const screenH = w > h ? Math.min(sc.width || 0, sc.height || 0) : Math.max(sc.width || 0, sc.height || 0);
     const inset = Math.round(probe.getBoundingClientRect().height || 0);
-    const extra = Math.max(0, Math.min(screenH - h, inset));
+    const grow = standalone() && screenH > h && screenH - h <= 200 ? screenH - h : 0;
     root.style.setProperty("--sab-px", inset + "px");
 
     if (h > 0 && w > 0) {
-      root.style.setProperty("--app-h", (h + extra) + "px");
+      root.style.setProperty("--app-h", h + "px");
       root.style.setProperty("--app-w", w + "px");
+      root.style.setProperty("--bg-h", (h + grow) + "px");
     }
     if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
     window.dispatchEvent(new Event("rtmss:viewport"));

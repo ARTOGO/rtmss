@@ -115,6 +115,7 @@ export default function InstallGuide({ hidden }) {
   const vvh = window.visualViewport ? Math.round(window.visualViewport.height) : 0;
   const sab = (() => { try { return getComputedStyle(document.documentElement).getPropertyValue("--sab-px").trim(); } catch (_) { return ""; } })();
   const appH = (() => { try { return getComputedStyle(document.documentElement).getPropertyValue("--app-h").trim(); } catch (_) { return ""; } })();
+  const bgH = (() => { try { return getComputedStyle(document.documentElement).getPropertyValue("--bg-h").trim(); } catch (_) { return ""; } })();
 
   return (
     <>
@@ -213,7 +214,7 @@ export default function InstallGuide({ hidden }) {
 
               <footer className="guide-foot">
                 <span className="meta">
-                  {status && status.build ? `版本 ${status.build} · ` : ""}視窗 {vw}×{vh}{vvh ? ` · 可見 ${vvh}` : ""}{sw ? ` · 螢幕 ${sw}×${sh}` : ""}{sab ? ` · 底部安全區 ${sab}` : ""}{appH ? ` · 舞台 ${appH}` : ""}
+                  {status && status.build ? `版本 ${status.build} · ` : ""}視窗 {vw}×{vh}{vvh ? ` · 可見 ${vvh}` : ""}{sw ? ` · 螢幕 ${sw}×${sh}` : ""}{sab ? ` · 底部安全區 ${sab}` : ""}{appH ? ` · 舞台 ${appH}` : ""}{bgH ? ` · 背景 ${bgH}` : ""}
                 </span>
                 {supported && (
                   <button type="button" className="guide-recheck" onClick={recheck}>重新檢查</button>
