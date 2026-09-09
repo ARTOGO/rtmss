@@ -53,5 +53,7 @@ export const LAYOUT = [
   { cx: 26.0, cy: 80.0, size: UNIT_SIZE }  // 10
 ];
 
-/* where the focused unit floats while its sheet is open (viewport fractions) */
-export const HERO = { x: 0.5, y: 0.29, scale: 1.55 };
+/* the focused unit floats centred in the space above the collapsed sheet
+   (sheetFrac of the height); `scale` is the maximum: short landscape
+   viewports scale it down automatically so the artwork is never clipped */
+export const HERO = { x: 0.5, sheetFrac: 0.41, scale: 1.55 };

@@ -39,6 +39,33 @@ if ("serviceWorker" in navigator && !import.meta.env.DEV) {
   });
 }
 
+/* ------------------------------------------------------------------
+   Viewport sizing. iPadOS home-screen web apps keep a stale layout
+   viewport after rotation (fixed layers end up short, leaving a band at
+   the bottom and shifting content up). We size the stage from the visual
+   viewport instead and re-measure a few times after every rotation.
+   ------------------------------------------------------------------ */
+(function installViewportFix() {
+  const root = document.documentElement;
+  const apply = () => {
+    const vv = window.visualViewport;
+    const h = Math.round(vv ? vv.height : window.innerHeight);
+    const w = Math.round(vv ? vv.width : window.innerWidth);
+    if (h > 0 && w > 0) {
+      root.style.setProperty("--app-h", h + "px");
+      root.style.setProperty("--app-w", w + "px");
+    }
+    if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+    window.dispatchEvent(new Event("rtmss:viewport"));
+  };
+  const settle = () => { apply(); [120, 400, 1000].forEach((ms) => setTimeout(apply, ms)); };
+  window.addEventListener("resize", settle);
+  window.addEventListener("orientationchange", settle);
+  window.addEventListener("pageshow", settle);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", apply);
+  settle();
+})();
+
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />

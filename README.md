@@ -138,8 +138,9 @@ import srt06 from "../assets/subtitles/track06.srt?raw";
   `<symbol>`，線寬、虛線、色段與原稿完全一致。要換圖只需覆蓋這個檔案（保持 viewBox 比例）。
 - **水波紋大小**：`RippleUnit.jsx` 的 `ART_SCALE`（原稿寬 ÷ LAYOUT 的 size，預設 1.6），
   數字越大相鄰水波交疊越多；`HIT_FRAC` 是可點擊核心的直徑比例。
-- **不裁切**：物理模擬以每顆「整張圖」的半寬當邊界（`wallSpring`/`wallDamp` 軟牆＋硬夾），
-  太靠邊的 LAYOUT 座標會依 `homeScale` 自動內縮，飄動、推擠、拖曳都不會超出畫面。
+- **隱形物理框**：物理模擬以每顆「整張圖」的半寬當邊界（`wallSpring`/`wallDamp` 軟牆＋硬夾），
+  左右是畫面邊緣、上方是標題區下緣、下方是底部說明文字上緣（從 DOM 量測）；太靠邊的 LAYOUT 座標
+  會依 `homeScale` 自動內縮，飄動、推擠、拖曳都不會壓到文字或超出畫面。
 - **單元動態**：`src/hooks/useUnitPhysics.js` 檔頭的 `P`：`wanderAmp`/`wanderPeriod` 漂移範圍與週期、
   `scaleRange` 呼吸區間（預設 0.6~1.2）、`breathPeriod`/`breathPeriod2` 兩層呼吸週期（每顆不同，由編號決定）、
   `contactFrac`/`repel`/`squeeze` 互斥距離、力道與被擠時的縮小量、`rippleForce` 背景漣漪推力、

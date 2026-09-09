@@ -22,9 +22,11 @@ import { ART_SCALE } from "../components/RippleUnit.jsx";
      becomes its new home (kept inside the viewport)
    - can be focused (a tour is open): it swims to the HERO spot at the
      top and grows while the sheet rises below; on close it swims back
-   - never leaves the viewport: the whole artwork (outer rings included)
-     is kept inside by a soft wall plus a hard clamp; homes that sit too
-     close to an edge are pulled in when the stage is measured
+   - stays inside an invisible frame: left/right edges of the viewport,
+     the bottom of the title block above and the top of the caption below
+     (measured from the DOM). The whole artwork (outer rings included) is
+     kept inside by a soft wall plus a hard clamp; homes that sit outside
+     are pulled in when the stage is measured
 
    All lengths are viewport pixels; the stage is measured on resize.
    ------------------------------------------------------------------ */
@@ -80,8 +82,10 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     const n = layout.length;
 
     let W = 1, H = 1, S = 1;   // S = short side, the design length unit
+    let topWall = 0, bottomWall = 1;   // the invisible frame's horizontal edges (stage px)
     const units = layout.map((l, i) => ({
-      hx: 0, hy: 0, r: 1,          // layout home (px) + design radius (px), set in measure()
+      hx: 0, hy: 0, r: 1,          // physics home (px, inside the frame) + design radius (px), set in measure()
+      ax: 0, ay: 0,                // DOM anchor (layout % in px) the transform is relative to
       sx: 0, sy: 0,                // home shift from dragging, fraction of W / H
       ox: 0, oy: 0,                // the same shift in px (derived)
       x: 0, y: 0, vx: 0, vy: 0,    // offset from (home + shift) + velocity
@@ -102,17 +106,42 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     function measure() {
       const rect = stage.getBoundingClientRect();
       W = rect.width || 1; H = rect.height || 1; S = Math.min(W, H);
+      // frame: below the title block, above the caption
+      const home = stage.parentElement;
+      const hdr = home && home.querySelector(".home-header");
+      const cap = home && home.querySelector(".home-caption");
+      topWall = hdr ? Math.max(0, hdr.getBoundingClientRect().bottom - rect.top) : 0;
+      bottomWall = cap ? Math.min(H, cap.getBoundingClientRect().top - rect.top) : H;
+      if (bottomWall - topWall < S * 0.3) { topWall = 0; bottomWall = H; }   // degenerate: fall back to the viewport
       units.forEach((u, i) => {
         u.r = (layout[i].size / 100) * S * 0.5;
         const m = halfArt(u, P.homeScale);
-        u.hx = Math.min(W - m, Math.max(m, (layout[i].cx / 100) * W));
-        u.hy = Math.min(H - m, Math.max(m, (layout[i].cy / 100) * H));
+        // DOM anchor (the element's left/top %) vs physics home (pulled inside the frame)
+        u.ax = (layout[i].cx / 100) * W;
+        u.ay = (layout[i].cy / 100) * H;
+        u.hx = Math.min(W - m, Math.max(m, u.ax));
+        u.hy = clampY(u.ay, m);
         u.ox = u.sx * W; u.oy = u.sy * H;
       });
       return rect;
     }
+    /* clamp a centre y into the frame for a unit with half-size m */
+    function clampY(y, m) {
+      const lo = topWall + m, hi = bottomWall - m;
+      if (lo > hi) return (topWall + bottomWall) / 2;
+      return Math.min(hi, Math.max(lo, y));
+    }
     /* half of the full artwork (outer dotted rings included) at scale s */
     function halfArt(u, s) { return u.r * ART_SCALE * s + P.wallPad * S; }
+
+    /* where the hero floats: centred in the space above the collapsed sheet,
+       scaled down if a short (landscape) viewport can't hold HERO.scale */
+    function heroGeom(u) {
+      const free = H * (1 - HERO.sheetFrac);           // px above the sheet
+      const y = free * 0.5;
+      const maxScale = (free * 0.5 * 0.92 - P.wallPad * S) / (u.r * ART_SCALE);
+      return { x: HERO.x * W, y, scale: Math.max(0.8, Math.min(HERO.scale, maxScale)) };
+    }
     let stageRect = measure();
 
     const cx = (u) => u.hx + u.ox + u.x;   // current centre, stage px
@@ -123,8 +152,9 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
         const el = unitRefs.current[i];
         if (!el) continue;
         const u = units[i];
+        // transform is relative to the DOM anchor: include the home shift (hx - ax)
         el.style.transform =
-          `translate(-50%,-50%) translate3d(${(u.ox + u.x).toFixed(2)}px, ${(u.oy + u.y).toFixed(2)}px, 0) scale(${u.s.toFixed(4)})`;
+          `translate(-50%,-50%) translate3d(${(u.hx - u.ax + u.ox + u.x).toFixed(2)}px, ${(u.hy - u.ay + u.oy + u.y).toFixed(2)}px, 0) scale(${u.s.toFixed(4)})`;
         if (!u.label) u.label = el.querySelector(".label");
         if (u.label) {
           const ls = Math.pow(u.s, -P.labelCounter);
@@ -137,7 +167,7 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     function settle(u) {
       const m = halfArt(u, u.s);
       const nx = Math.min(W - m, Math.max(m, cx(u)));
-      const ny = Math.min(H - m, Math.max(m, cy(u)));
+      const ny = clampY(cy(u), m);
       u.ox = nx - u.hx; u.oy = ny - u.hy;
       u.sx = u.ox / W; u.sy = u.oy / H;
       u.x = 0; u.y = 0;                     // keep vx / vy → a little momentum after release
@@ -175,11 +205,12 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
           // side at hero size and glides in
           out.vx = -dir * P.slideExit * W;
           out.vy = 0;
-          const startX = dir > 0 ? W + halfArt(inn, HERO.scale) : -halfArt(inn, HERO.scale);
+          const hg = heroGeom(inn);
+          const startX = dir > 0 ? W + halfArt(inn, hg.scale) : -halfArt(inn, hg.scale);
           inn.x = startX - (inn.hx + inn.ox);
-          inn.y = HERO.y * H - (inn.hy + inn.oy);
+          inn.y = hg.y - (inn.hy + inn.oy);
           inn.vx = 0; inn.vy = 0;
-          inn.s = HERO.scale;
+          inn.s = hg.scale;
         }
         focusWas = focus;
       }
@@ -211,10 +242,10 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
 
         if (isFocus) {
           // swim to the hero spot and hold there, breathing gently
-          const targetX = HERO.x * W, targetY = HERO.y * H;
-          ax = (targetX - cx(u)) * P.focusSpring - u.vx * P.focusDamp;
-          ay = (targetY - cy(u)) * P.focusSpring - u.vy * P.focusDamp;
-          sT = HERO.scale + Math.sin(t * 0.9) * P.focusBreath;
+          const hg = heroGeom(u);
+          ax = (hg.x - cx(u)) * P.focusSpring - u.vx * P.focusDamp;
+          ay = (hg.y - cy(u)) * P.focusSpring - u.vy * P.focusDamp;
+          sT = hg.scale + Math.sin(t * 0.9) * P.focusBreath;
         } else if (isDragged) {
           // follow the finger (pointer → stage px, minus the grab offset)
           const targetX = drag.x - stageRect.left - drag.grabDX;
@@ -302,13 +333,14 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
         if (!isFocus) {
           const m = halfArt(u, u.s);
           let px = cx(u), py = cy(u);
+          const yLo = topWall + m, yHi = bottomWall - m;
           if (px < m)          { u.vx += ((m - px) * P.wallSpring - Math.min(0, u.vx) * P.wallDamp) * dt; }
           else if (px > W - m) { u.vx += (((W - m) - px) * P.wallSpring - Math.max(0, u.vx) * P.wallDamp) * dt; }
-          if (py < m)          { u.vy += ((m - py) * P.wallSpring - Math.min(0, u.vy) * P.wallDamp) * dt; }
-          else if (py > H - m) { u.vy += (((H - m) - py) * P.wallSpring - Math.max(0, u.vy) * P.wallDamp) * dt; }
+          if (py < yLo)        { u.vy += ((yLo - py) * P.wallSpring - Math.min(0, u.vy) * P.wallDamp) * dt; }
+          else if (py > yHi)   { u.vy += ((yHi - py) * P.wallSpring - Math.max(0, u.vy) * P.wallDamp) * dt; }
           px = cx(u); py = cy(u);
           const nx = Math.min(W - m, Math.max(m, px));
-          const ny = Math.min(H - m, Math.max(m, py));
+          const ny = clampY(py, m);
           if (nx !== px) { u.x += nx - px; if ((nx > px && u.vx < 0) || (nx < px && u.vx > 0)) u.vx *= 0.2; }
           if (ny !== py) { u.y += ny - py; if ((ny > py && u.vy < 0) || (ny < py && u.vy > 0)) u.vy *= 0.2; }
         }
@@ -329,9 +361,10 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
         // still layout; the focused unit still jumps to the hero spot
         units.forEach((u, i) => {
           const f = i === focusRef.current;
-          u.x = f ? HERO.x * W - u.hx - u.ox : 0;
-          u.y = f ? HERO.y * H - u.hy - u.oy : 0;
-          u.s = f ? HERO.scale : 1;
+          const hg = heroGeom(u);
+          u.x = f ? hg.x - u.hx - u.ox : 0;
+          u.y = f ? hg.y - u.hy - u.oy : 0;
+          u.s = f ? hg.scale : 1;
         });
         apply();
         raf = requestAnimationFrame(function still() {
@@ -349,6 +382,7 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     const onResize = () => { stageRect = measure(); };
     const onVisibility = () => (document.hidden ? stop() : start());
     window.addEventListener("resize", onResize);
+    window.addEventListener("rtmss:viewport", onResize);
     document.addEventListener("visibilitychange", onVisibility);
     reduceMotion.addEventListener?.("change", start);
 
@@ -356,8 +390,9 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     return () => {
       stop();
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("rtmss:viewport", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
       reduceMotion.removeEventListener?.("change", start);
     };
-  }, [stageRef, unitRefs, layout, tapSignal, dragRef, focusRef]);
+  }, [stageRef, unitRefs, layout, tapSignal, dragRef, focusRef, navRef]);
 }
