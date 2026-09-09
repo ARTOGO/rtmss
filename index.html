@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>渡口回聲｜時光渡口・記憶漣漪</title>
+<style>
+
+/* ============================================================
+   時光渡口・記憶漣漪 — 語音導覽 Prototype
+   Palette: 9A4332 (赭紅) / DDCFA4 (米杏) / 0C6C6C (深潭青) / 92AEB2 (霧灰藍)
+   ============================================================ */
+
+:root{
+  --rust:#9A4332;
+  --rust-deep:#7c3527;
+  --cream:#DDCFA4;
+  --teal:#0C6C6C;
+  --teal-deep:#0a3d3d;
+  --mist:#92AEB2;
+  --ink:#1c2b2a;
+  --paper:#fbf6ec;
+
+  --accent-green:#4c8c5b;
+  --accent-navy:#2f4c8c;
+  --accent-pink:#d97b8c;
+  --accent-yellow:#e3c257;
+  --accent-red:#c85a45;
+  --accent-purple:#7a5f9c;
+  --accent-orange:#d98a4a;
+  --accent-sky:#5fa0c2;
+  --accent-pale:#eae3d2;
+
+  --stage-w: 1536px;
+  --stage-h: 2048px;
+}
+
+*{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+html,body{
+  margin:0; padding:0; width:100%; height:100%;
+  overflow:hidden;
+  background:#0a2323;
+  font-family:-apple-system, BlinkMacSystemFont, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
+  color:var(--paper);
+  user-select:none;
+  -webkit-user-select:none;
+}
+button{ font-family:inherit; }
+
+/* ---------- Stage: fixed 3:4 portrait canvas, letterboxed ---------- */
+#stage-outer{
+  position:fixed; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:#05100f;
+}
+#stage{
+  position:relative;
+  width:min(100vw, 75vh);
+  height:min(133.333vw, 100vh);
+  aspect-ratio: 3 / 4;
+  overflow:hidden;
+  box-shadow:0 0 60px rgba(0,0,0,0.5);
+  background: linear-gradient(163deg,
+    #0a4a48 0%,
+    #2f6864 13%,
+    #6f8f88 27%,
+    #a6ab8e 40%,
+    #ddcfa4 53%,
+    #d6ab79 67%,
+    #bd7a52 80%,
+    #9a4332 100%);
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+.screen{
+  position:absolute; inset:0;
+  opacity:0; visibility:hidden;
+  transition:opacity .5s ease;
+  pointer-events:none;
+}
+.screen.active{
+  opacity:1; visibility:visible;
+  pointer-events:auto;
+}
+
+/* ============================================================
+   HOME SCREEN
+   ============================================================ */
+#home-screen .home-header{
+  position:absolute; top:0; left:0; right:0;
+  padding: 3.2% 6% 0 6%;
+  z-index:5;
+}
+#home-screen .home-header .zh{
+  font-size: 1.55vh;
+  font-weight:700;
+  letter-spacing:.12em;
+  color:#f4efe1;
+  text-shadow:0 1px 6px rgba(0,0,0,.25);
+}
+#home-screen .home-header .en{
+  margin-top:.35vh;
+  font-size:1vh;
+  letter-spacing:.06em;
+  color:rgba(244,239,225,.75);
+}
+
+.ripple-field{
+  position:absolute;
+  inset:0;
+}
+#ripple-svg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+  pointer-events:none;
+}
+.flow-ring{
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation-name: flow-out;
+  animation-timing-function: cubic-bezier(.15,.55,.4,1);
+  animation-iteration-count: infinite;
+}
+@keyframes flow-out{
+  0%   { transform:scale(1);    opacity:0.85; }
+  85%  { opacity:0.08; }
+  100% { transform:scale(var(--flow-scale, 6)); opacity:0; }
+}
+@media (prefers-reduced-motion: reduce){
+  .flow-ring{ animation:none; opacity:.25; }
+}
+
+.home-caption{
+  position:absolute;
+  left:0; right:0; bottom:3.6%;
+  text-align:center;
+  font-size:1.75vh;
+  font-weight:700;
+  letter-spacing:.14em;
+  color:#fbf6ec;
+  text-shadow:0 1px 8px rgba(0,0,0,.35);
+  z-index:5;
+  pointer-events:none;
+}
+
+/* ---- ripple button ----
+   The concentric-wave artwork itself lives in the shared #ripple-svg
+   background layer (so rings from neighbouring ripples can overlap /
+   interfere exactly like the key-visual). Each .ripple-btn is only the
+   tappable hit-area + label that sits centred on top of its SVG ripple. */
+.ripple-btn{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  border:none; background:none; padding:0; margin:0;
+  cursor:pointer;
+  display:block;
+  z-index:2;
+}
+.ripple-btn .ripple-visual{
+  position:relative;
+  width:100%;
+  height:100%;
+  border-radius:28%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:transform .18s ease;
+}
+.ripple-btn .ripple-visual::before{
+  content:"";
+  position:absolute;
+  inset:-10%;
+  border-radius:30%;
+  background:radial-gradient(circle, rgba(10,20,20,.28) 0%, rgba(10,20,20,0) 75%);
+}
+.label{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  text-align:center;
+  font-weight:700;
+  line-height:1.3;
+  color:#fbf6ec;
+  text-shadow:0 1px 6px rgba(0,0,0,.45);
+  letter-spacing:.03em;
+  pointer-events:none;
+  z-index:3;
+  writing-mode:horizontal-tb;
+}
+.label .num{
+  display:block;
+  font-size:.6em;
+  font-weight:600;
+  letter-spacing:.2em;
+  opacity:.72;
+  margin-bottom:.25em;
+}
+
+.ripple-btn:active .ripple-visual{ transform:scale(.94); }
+
+.ripple-btn{ animation: breathe 6.5s ease-in-out infinite; }
+@keyframes breathe{
+  0%,100%{ transform:translate(-50%,-50%) scale(1); }
+  50%{ transform:translate(-50%,-50%) scale(1.03); }
+}
+
+/* tap sonar feedback */
+.sonar{
+  position:absolute;
+  top:50%; left:50%;
+  width:20%; height:20%;
+  border-radius:26%;
+  border:2px solid rgba(255,255,255,.8);
+  transform:translate(-50%,-50%) scale(1);
+  opacity:.9;
+  pointer-events:none;
+  animation:sonar-out .7s ease-out forwards;
+}
+@keyframes sonar-out{
+  to{ transform:translate(-50%,-50%) scale(4.6); opacity:0; }
+}
+
+/* ============================================================
+   DETAIL / PLAYER SCREEN
+   ============================================================ */
+#detail-screen{
+  background:transparent;
+}
+.detail-decor{
+  position:absolute;
+  top:-14%; right:-18%;
+  width:70%; height:52.5%;
+  opacity:.35;
+  pointer-events:none;
+}
+.detail-decor .ring{
+  position:absolute;
+  border-radius:26%;
+  border:1.4px solid rgba(255,255,255,.35);
+}
+
+.detail-inner{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  padding: 3.4% 6% 3.6% 6%;
+}
+
+.detail-header{
+  display:flex;
+  align-items:center;
+  gap:3%;
+  flex:0 0 auto;
+}
+.back-btn{
+  display:flex; align-items:center; justify-content:center;
+  width:6.2vh; height:6.2vh;
+  border-radius:50%;
+  background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.4);
+  color:#fbf6ec;
+  cursor:pointer;
+  flex:0 0 auto;
+}
+.back-btn svg{ width:46%; height:46%; }
+.detail-heading{ min-width:0; }
+.detail-heading .eyebrow{
+  font-size:1.15vh;
+  letter-spacing:.18em;
+  color:rgba(251,246,236,.7);
+  font-weight:600;
+}
+.detail-heading h1{
+  margin:.3vh 0 0 0;
+  font-size:2.6vh;
+  font-weight:700;
+  color:#fbf6ec;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.player-card{
+  flex:0 0 auto;
+  margin-top:3.4%;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:22px;
+  padding:5% 6%;
+  backdrop-filter: blur(6px);
+}
+
+.transport{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6%;
+}
+.ctrl-btn{
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.5);
+  background:rgba(255,255,255,.12);
+  color:#fbf6ec;
+  cursor:pointer;
+}
+.ctrl-btn.play{
+  width:11vh; height:11vh;
+  background:#fbf6ec;
+  color:var(--teal-deep);
+  border:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.28);
+}
+.ctrl-btn.play svg{ width:38%; height:38%; margin-left:3%; }
+.ctrl-btn.play.is-playing svg{ margin-left:0; }
+.ctrl-btn.stop{
+  width:7vh; height:7vh;
+}
+.ctrl-btn.stop svg{ width:34%; height:34%; }
+
+.progress-row{
+  margin-top:5%;
+}
+.time-row{
+  display:flex; justify-content:space-between;
+  font-size:1.35vh;
+  color:rgba(251,246,236,.85);
+  font-variant-numeric: tabular-nums;
+  margin-bottom:.8vh;
+  letter-spacing:.02em;
+}
+input[type="range"].seek{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:4px;
+  border-radius:4px;
+  background:rgba(255,255,255,.3);
+  outline:none;
+  margin:0;
+}
+input[type="range"].seek::-webkit-slider-runnable-track{
+  height:4px; border-radius:4px;
+  background:linear-gradient(to right, #fbf6ec var(--pct,0%), rgba(255,255,255,.28) var(--pct,0%));
+}
+input[type="range"].seek::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:2.4vh; height:2.4vh;
+  border-radius:50%;
+  background:#fbf6ec;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+  margin-top:-1.05vh;
+  cursor:pointer;
+}
+input[type="range"].seek::-moz-range-track{
+  height:4px; border-radius:4px;
+  background:rgba(255,255,255,.28);
+}
+input[type="range"].seek::-moz-range-progress{
+  height:4px; border-radius:4px;
+  background:#fbf6ec;
+}
+input[type="range"].seek::-moz-range-thumb{
+  width:2.4vh; height:2.4vh; border:none; border-radius:50%;
+  background:#fbf6ec;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+}
+
+.audio-status{
+  margin-top:2.2%;
+  text-align:center;
+  font-size:1.2vh;
+  letter-spacing:.06em;
+  color:rgba(251,246,236,.6);
+  min-height:1.6vh;
+}
+
+.transcript-card{
+  flex:1 1 auto;
+  margin-top:3.4%;
+  min-height:0;
+  background:rgba(251,246,236,.94);
+  border-radius:22px;
+  padding:4.5% 5.5%;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+.transcript-card .transcript-title{
+  flex:0 0 auto;
+  font-size:1.5vh;
+  font-weight:700;
+  letter-spacing:.1em;
+  color:var(--teal-deep);
+  margin-bottom:2.4%;
+  display:flex;
+  align-items:center;
+  gap:.5em;
+}
+.transcript-card .transcript-title .dot{
+  width:.5em; height:.5em; border-radius:50%;
+  background:var(--rust);
+  flex:0 0 auto;
+}
+.transcript-scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  padding-right:2%;
+  -webkit-overflow-scrolling:touch;
+}
+.transcript-scroll p{
+  margin:0 0 1.1em 0;
+  font-size:1.75vh;
+  line-height:1.9;
+  color:var(--ink);
+  letter-spacing:.02em;
+}
+.transcript-scroll::-webkit-scrollbar{ width:5px; }
+.transcript-scroll::-webkit-scrollbar-thumb{
+  background:rgba(12,108,108,.35); border-radius:4px;
+}
+
+/* small screens / landscape safeguard */
+@media (orientation:landscape) and (max-height:820px){
+  #stage{ width:min(100vw, 75vh); height:min(133.333vw, 100vh); }
+}
+</style>
+</head>
+<body>
+
+<div id="stage-outer">
+  <div id="stage">
+
+    <!-- ============================================================
+         HOME SCREEN
+         ============================================================ -->
+    <section id="home-screen" class="screen active">
+      <header class="home-header">
+        <div class="zh">時光渡口・記憶漣漪</div>
+        <div class="en">Reawakening the Time and Memories of Shisizhang through Sound</div>
+      </header>
+
+      <div class="ripple-field" id="ripple-field"><!-- injected by JS --></div>
+
+      <div class="home-caption">點擊水波，聆聽歲月深處的回聲</div>
+    </section>
+
+    <!-- ============================================================
+         DETAIL / PLAYER SCREEN
+         ============================================================ -->
+    <section id="detail-screen" class="screen">
+      <div class="detail-decor" id="detail-decor"><!-- injected by JS --></div>
+
+      <div class="detail-inner">
+        <div class="detail-header">
+          <button class="back-btn" id="back-btn" aria-label="回上一頁">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M15 5L8 12L15 19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="detail-heading">
+            <div class="eyebrow">語音導覽</div>
+            <h1 id="detail-title">導覽主題</h1>
+          </div>
+        </div>
+
+        <div class="player-card">
+          <div class="transport">
+            <button class="ctrl-btn stop" id="stop-btn" aria-label="停止">
+              <svg viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>
+            </button>
+            <button class="ctrl-btn play" id="play-btn" aria-label="播放">
+              <svg id="play-icon" viewBox="0 0 24 24" fill="none"><path d="M8 5.5v13l11-6.5-11-6.5z" fill="currentColor"/></svg>
+              <svg id="pause-icon" viewBox="0 0 24 24" fill="none" style="display:none"><rect x="6.5" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
+            </button>
+            <div style="width:7vh;"></div>
+          </div>
+
+          <div class="progress-row">
+            <div class="time-row">
+              <span id="time-current">00:00</span>
+              <span id="time-total">00:00</span>
+            </div>
+            <input type="range" class="seek" id="seek" min="0" max="100" value="0" step="0.1">
+          </div>
+          <div class="audio-status" id="audio-status"></div>
+        </div>
+
+        <div class="transcript-card">
+          <div class="transcript-title"><span class="dot"></span>逐字稿</div>
+          <div class="transcript-scroll" id="transcript-body"><!-- injected by JS --></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<audio id="audio-player" preload="metadata"></audio>
+
+<script>
+/* ============================================================
+   資料設定區 — 請在此替換為正式的主題名稱、音檔與逐字稿
+   TOURS DATA — replace title / audioSrc / transcript with real content
+   ============================================================ */
+const TOURS = [
+  {
+    id: 1,
+    title: "渡口的早晨",
+    audioSrc: "audio/track01.mp3",
+    transcript: [
+      "這裡是《渡口的早晨》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "十四張的清晨，渡船緩緩靠岸，霧氣還未散去，市集已經開始準備。",
+      "請將正式錄音檔放入 audio 資料夾，並命名為 track01.mp3，即可自動對應此按鈕。"
+    ]
+  },
+  {
+    id: 2,
+    title: "老街的叫賣聲",
+    audioSrc: "audio/track02.mp3",
+    transcript: [
+      "這裡是《老街的叫賣聲》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "早市的叫賣聲此起彼落,是老街最鮮明的記憶之一。",
+      "請將正式錄音檔命名為 track02.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 3,
+    title: "河畔洗衣歌",
+    audioSrc: "audio/track03.mp3",
+    transcript: [
+      "這裡是《河畔洗衣歌》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "婦人們在河邊搗衣、談笑,水波隨著棒槌聲一圈圈盪開。",
+      "請將正式錄音檔命名為 track03.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 4,
+    title: "廟埕記事",
+    audioSrc: "audio/track04.mp3",
+    transcript: [
+      "這裡是《廟埕記事》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "廟口廣場曾是社區的中心，年節慶典、野台戲都在此上演。",
+      "請將正式錄音檔命名為 track04.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 5,
+    title: "稻埕飄香",
+    audioSrc: "audio/track05.mp3",
+    transcript: [
+      "這裡是《稻埕飄香》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "曬穀場上稻穀翻曬，陽光與稻香交織成十四張最溫暖的氣味記憶。",
+      "請將正式錄音檔命名為 track05.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 6,
+    title: "渡船歲月",
+    audioSrc: "audio/track06.mp3",
+    transcript: [
+      "這裡是《渡船歲月》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "在橋樑尚未興建之前，渡船是連結兩岸生活的唯一方式。",
+      "請將正式錄音檔命名為 track06.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 7,
+    title: "巷弄童年",
+    audioSrc: "audio/track07.mp3",
+    transcript: [
+      "這裡是《巷弄童年》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "彈珠、跳格子、追逐嬉戲的笑聲，至今仍迴盪在窄巷之間。",
+      "請將正式錄音檔命名為 track07.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 8,
+    title: "雨中的屋簷",
+    audioSrc: "audio/track08.mp3",
+    transcript: [
+      "這裡是《雨中的屋簷》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "屋簷下躲雨的人們，聽著雨聲說起了那些年的故事。",
+      "請將正式錄音檔命名為 track08.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 9,
+    title: "市場人聲",
+    audioSrc: "audio/track09.mp3",
+    transcript: [
+      "這裡是《市場人聲》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "菜販、魚販與熟客的討價還價聲，構成了十四張最有生命力的日常。",
+      "請將正式錄音檔命名為 track09.mp3 放入 audio 資料夾。"
+    ]
+  },
+  {
+    id: 10,
+    title: "歸途的燈火",
+    audioSrc: "audio/track10.mp3",
+    transcript: [
+      "這裡是《歸途的燈火》的逐字稿內容，請於此處貼上實際的語音導覽文字稿。",
+      "暮色降臨，家家戶戶點起燈火，渡口迎來歸家的人們。",
+      "請將正式錄音檔命名為 track10.mp3 放入 audio 資料夾。"
+    ]
+  }
+];
+
+/* ============================================================
+   版面位置設定 — 依照最新 iPad 介面示意圖標定 10 個水波紋的
+   中心座標 (cx / cy，皆為百分比) 與相對尺寸 (size)
+   ============================================================ */
+const LAYOUT = [
+  { cx: 51.3, cy: 65.5, size: 19.1 }, // 01
+  { cx: 77.7, cy: 16.4, size: 19.1 }, // 02
+  { cx: 87.3, cy: 45.2, size: 17.8 }, // 03
+  { cx: 82.6, cy: 90.6, size: 19.1 }, // 04
+  { cx: 53.3, cy: 39.3, size: 29.3 }, // 05 (featured / largest)
+  { cx: 84.1, cy: 68.7, size: 19.7 }, // 06
+  { cx: 17.2, cy: 31.9, size: 17.8 }, // 07
+  { cx: 18.9, cy: 55.2, size: 17.8 }, // 08
+  { cx: 61.1, cy: 81.5, size: 14.0 }, // 09
+  { cx: 27.1, cy: 80.8, size: 22.9 }  // 10
+];
+
+const ACCENT_HEX = [
+  "#4c8c5b", "#2f4c8c", "#d97b8c", "#e3c257", "#c85a45",
+  "#7a5f9c", "#d98a4a", "#5fa0c2", "#eae3d2"
+];
+
+/* ============================================================
+   建立主視覺水波紋場 (單一 SVG，讓相鄰水波的同心方框互相交疊、
+   透光疊加，重現示意圖裡「漣漪互相穿透」的效果)
+   viewBox 採用 0 0 100 133.3333，剛好對應舞台 3:4 比例，
+   因此 x/y 兩軸的 1 單位＝實體上等長，同心方框不會被拉伸變形。
+   ============================================================ */
+const SVG_NS = "http://www.w3.org/2000/svg";
+const VB_W = 100, VB_H = 133.3333;
+
+function buildRippleField(){
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("id", "ripple-svg");
+  svg.setAttribute("viewBox", `0 0 ${VB_W} ${VB_H}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  // ---- one interference group per tour ripple ----
+  const wavesLayer = document.createElementNS(SVG_NS, "g");
+  wavesLayer.style.mixBlendMode = "screen";
+  svg.appendChild(wavesLayer);
+
+  LAYOUT.forEach((layout, i) => {
+    wavesLayer.appendChild(buildOneRipple(layout, i));
+  });
+
+  return svg;
+}
+
+function buildOneRipple(layout, seedIndex){
+  const g = document.createElementNS(SVG_NS, "g");
+  const cx = layout.cx;
+  const cy = layout.cy * (VB_H / 100);
+  const R = layout.size / 2; // ripple's own "design" half-size (core sits here)
+
+  /* ---- measured from the official key-visual asset (水波紋_彩色.png) ----
+     a fixed, moderate ring count (not too busy), corner radius ~0.56×r,
+     colour interpolates from pale ice-blue at the core out to a
+     gray-teal at the rim. Rings are allowed to travel well past the
+     ripple's own R so that neighbouring ripples' outer rings overlap,
+     matching the key-visual. */
+  const CORE_FRAC  = 0.158;                 // hollow core radius / R
+  const CORE_R     = R * CORE_FRAC;
+  const OVERLAP    = 1.9;                   // how far past its own R a ripple's rings reach
+  const MAX_R      = R * OVERLAP;
+  const RING_COUNT = 13;                    // fewer, more legible rings
+  const PITCH      = (MAX_R - CORE_R) / (RING_COUNT - 1);
+  const RX_RATIO   = 0.56;                  // corner roundness, very squircle-like
+
+  const COL_INNER = [224, 241, 248];        // pale ice-blue, near the core
+  const COL_OUTER = [143, 171, 175];        // gray-teal, at the rim
+  const GRADIENT_SPAN = 7;                  // colour finishes changing by ring ~7, stays flat after
+
+  // seeded PRNG so each ripple's hand-drawn dash gaps are stable across renders
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const rand = mulberry32(seedIndex * 97 + 13);
+
+  function roundedSquarePath(r, rx){
+    // trace a rounded square path clockwise starting at top-middle —
+    // gives us a real path so coloured accents can ride along it later.
+    const x0 = cx - r, y0 = cy - r, x1 = cx + r, y1 = cy + r;
+    return [
+      `M ${cx} ${y0}`,
+      `L ${x1 - rx} ${y0}`,
+      `A ${rx} ${rx} 0 0 1 ${x1} ${y0 + rx}`,
+      `L ${x1} ${y1 - rx}`,
+      `A ${rx} ${rx} 0 0 1 ${x1 - rx} ${y1}`,
+      `L ${x0 + rx} ${y1}`,
+      `A ${rx} ${rx} 0 0 1 ${x0} ${y1 - rx}`,
+      `L ${x0} ${y0 + rx}`,
+      `A ${rx} ${rx} 0 0 1 ${x0 + rx} ${y0}`,
+      "Z"
+    ].join(" ");
+  }
+
+  function ringColor(i){
+    const t = Math.min(i / GRADIENT_SPAN, 1);
+    const c = COL_INNER.map((v, k) => Math.round(v + (COL_OUTER[k] - v) * t));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  for(let i = 0; i < RING_COUNT; i++){
+    const r  = CORE_R + i * PITCH;
+    const rx = Math.min(r * RX_RATIO, r);
+    const t  = i / (RING_COUNT - 1);
+    const widthFrac = 0.026 - t * (0.026 - 0.0026);   // markedly thicker at the core
+    const alpha = 0.99 - t * (0.99 - 0.42);
+
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", roundedSquarePath(r, rx));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", ringColor(i));
+    path.setAttribute("stroke-opacity", alpha.toFixed(2));
+    path.setAttribute("stroke-width", (R * widthFrac).toFixed(3));
+
+    // hand-drawn irregular gaps: 3–5 dash/gap pairs of varied length
+    const perimeter = 8 * r + rx * (2 * Math.PI - 8);
+    const segments = 3 + Math.floor(rand() * 3);
+    let dash = [];
+    for(let s = 0; s < segments; s++){
+      dash.push((perimeter / segments) * (0.45 + rand() * 0.4));
+      dash.push((perimeter / segments) * (0.12 + rand() * 0.25));
+    }
+    path.setAttribute("stroke-dasharray", dash.map(d => d.toFixed(1)).join(","));
+    path.setAttribute("stroke-dashoffset", (rand() * perimeter).toFixed(1));
+    path.setAttribute("stroke-linecap", "round");
+    g.appendChild(path);
+  }
+
+  // faint dotted halo continuing outward beyond the solid rings, same pitch
+  const DOTTED_COUNT = 6;
+  for(let j = 0; j < DOTTED_COUNT; j++){
+    const r = MAX_R + (j + 1) * PITCH;
+    const rx = Math.min(r * RX_RATIO, r);
+    const opacity = 0.34 * Math.pow(1 - j / DOTTED_COUNT, 1.3) + 0.03;
+    const sw = R * 0.006;
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", roundedSquarePath(r, rx));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "rgba(210,225,228,1)");
+    path.setAttribute("stroke-opacity", opacity.toFixed(3));
+    path.setAttribute("stroke-width", sw.toFixed(3));
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-dasharray", `${(sw*0.9).toFixed(2)},${(sw*3.4).toFixed(2)}`);
+    g.appendChild(path);
+  }
+
+  /* ---- colourful accent segments, riding directly on specific ring
+     paths near the upper-/lower-left curve — reproduces the little
+     coloured strokes measured on the reference asset ---- */
+  const ACCENTS = [
+    { color: "#c85a45", frac: 0.379, type: "edge",   yFrac: -0.06, len: 0.16 }, // red
+    { color: "#e3c257", frac: 0.436, type: "edge",   yFrac: -0.05, len: 0.22 }, // yellow
+    { color: "#d98a4a", frac: 0.538, type: "corner", corner: "bl", from: 100, to: 158 }, // orange
+    { color: "#4c8c5b", frac: 0.550, type: "corner", corner: "tl", from: 195, to: 253 }, // green
+    { color: "#2f4c8c", frac: 0.575, type: "edge",   yFrac: -0.34, len: 0.30 }, // navy
+    { color: "#7a5f9c", frac: 0.612, type: "edge",   yFrac:  0.06, len: 0.24 }, // purple
+    { color: "#d97b8c", frac: 0.651, type: "edge",   yFrac: -0.18, len: 0.34 }, // pink
+    { color: "#5fa0c2", frac: 0.795, type: "corner", corner: "bl", from: 60,  to: 108 }, // sky blue
+    { color: "#eae3d2", frac: 0.30,  type: "edge",   yFrac:  0.30, len: 0.10 }  // pale cream
+  ];
+
+  ACCENTS.forEach((a, i) => {
+    const rr = a.frac * R; // radius as a fraction of the ripple's own design size
+    const rx = Math.min(rr * RX_RATIO, rr);
+    const s  = rr - rx; // flat-edge half-extent
+    const strokeW = R * (0.026 - (a.frac) * (0.026 - 0.0026)) * 1.15;
+    const idx = (i + seedIndex) % 9;
+    const col = a.color;
+
+    if(a.type === "edge"){
+      const x = cx - rr;
+      const yMid = cy + a.yFrac * s * 2;
+      const len = a.len * s * 2;
+      const line = document.createElementNS(SVG_NS, "line");
+      line.setAttribute("x1", x.toFixed(2));
+      line.setAttribute("y1", (yMid - len/2).toFixed(2));
+      line.setAttribute("x2", x.toFixed(2));
+      line.setAttribute("y2", (yMid + len/2).toFixed(2));
+      line.setAttribute("stroke", col);
+      line.setAttribute("stroke-width", strokeW.toFixed(3));
+      line.setAttribute("stroke-linecap", "round");
+      g.appendChild(line);
+    } else {
+      // corner arc: tl = top-left corner, bl = bottom-left corner
+      const centerX = cx - s;
+      const centerY = a.corner === "tl" ? cy - s : cy + s;
+      const arcPath = document.createElementNS(SVG_NS, "path");
+      const steps = 10;
+      let d = "";
+      for(let k = 0; k <= steps; k++){
+        const ang = (a.from + (a.to - a.from) * (k/steps)) * Math.PI / 180;
+        const px = centerX + rx * Math.cos(ang);
+        const py = centerY + rx * Math.sin(ang);
+        d += (k === 0 ? "M " : "L ") + px.toFixed(2) + " " + py.toFixed(2) + " ";
+      }
+      arcPath.setAttribute("d", d.trim());
+      arcPath.setAttribute("fill", "none");
+      arcPath.setAttribute("stroke", col);
+      arcPath.setAttribute("stroke-width", strokeW.toFixed(3));
+      arcPath.setAttribute("stroke-linecap", "round");
+      g.appendChild(arcPath);
+    }
+  });
+
+  /* ---- flowing pulses: rings that continuously expand outward from the
+     core and fade, like a real ripple travelling out across water ---- */
+  const FLOW_COUNT = 3;
+  const flowScale = MAX_R / CORE_R;
+  const flowDuration = 5.5 + (seedIndex % 4) * 0.6; // slight per-ripple variation
+  for(let p = 0; p < FLOW_COUNT; p++){
+    const flow = document.createElementNS(SVG_NS, "path");
+    flow.setAttribute("d", roundedSquarePath(CORE_R, CORE_R * RX_RATIO));
+    flow.setAttribute("fill", "none");
+    flow.setAttribute("stroke", "rgba(255,255,255,0.9)");
+    flow.setAttribute("stroke-width", (R * 0.012).toFixed(3));
+    flow.setAttribute("vector-effect", "non-scaling-stroke");
+    flow.setAttribute("class", "flow-ring");
+    flow.style.setProperty("--flow-scale", flowScale.toFixed(2));
+    flow.style.animationDuration = flowDuration.toFixed(2) + "s";
+    flow.style.animationDelay = (-(p * flowDuration / FLOW_COUNT)).toFixed(2) + "s";
+    g.appendChild(flow);
+  }
+
+  return g;
+}
+
+/* ============================================================
+   建立首頁 10 個水波紋按鈕（可點擊區＋文字標籤；
+   視覺水波本身畫在共用的 #ripple-svg 背景層）
+   ============================================================ */
+const field = document.getElementById("ripple-field");
+field.appendChild(buildRippleField());
+
+TOURS.forEach((tour, i) => {
+  const layout = LAYOUT[i];
+  const hitSize = layout.size * 0.40; // matches the reference's hollow core + a little breathing room
+
+  const btn = document.createElement("button");
+  btn.className = "ripple-btn";
+  btn.style.left = layout.cx + "%";
+  btn.style.top = layout.cy + "%";
+  btn.style.width = hitSize + "%";
+  btn.style.aspectRatio = "1 / 1";
+  btn.style.animationDelay = (i * 0.35) + "s";
+  btn.setAttribute("data-id", tour.id);
+  btn.setAttribute("aria-label", tour.title);
+
+  const visual = document.createElement("div");
+  visual.className = "ripple-visual";
+  btn.appendChild(visual);
+
+  btn.addEventListener("click", () => {
+    spawnSonar(visual);
+    setTimeout(() => openDetail(tour), 140);
+  });
+
+  field.appendChild(btn);
+
+  // The title label is a separate overlay, sized from the ripple's full
+  // design size (not the small hit-area), so multi-character titles always
+  // lay out on one or two HORIZONTAL lines instead of stacking vertically.
+  // pointer-events:none lets taps pass straight through to the button below.
+  const label = document.createElement("div");
+  label.className = "label";
+  label.style.left = layout.cx + "%";
+  label.style.top = layout.cy + "%";
+  label.style.width = (layout.size * 0.86) + "%";
+  label.style.fontSize = (layout.size * 0.052) + "vw";
+  label.innerHTML = `<span class="num">${String(tour.id).padStart(2,"0")}</span>${tour.title}`;
+  field.appendChild(label);
+});
+
+function spawnSonar(visual){
+  const s = document.createElement("div");
+  s.className = "sonar";
+  visual.appendChild(s);
+  s.addEventListener("animationend", () => s.remove());
+}
+
+/* decorative faint ripple on detail screen */
+buildDetailDecor();
+function buildDetailDecor(){
+  const decor = document.getElementById("detail-decor");
+  const RINGS = 8;
+  for(let i=0;i<RINGS;i++){
+    const inset = (i/(RINGS-1)) * 40;
+    const ring = document.createElement("div");
+    ring.className = "ring";
+    ring.style.inset = inset + "%";
+    ring.style.borderColor = `rgba(255,255,255,${(0.15+ i*0.05).toFixed(2)})`;
+    decor.appendChild(ring);
+  }
+}
+
+/* ============================================================
+   畫面切換
+   ============================================================ */
+const homeScreen = document.getElementById("home-screen");
+const detailScreen = document.getElementById("detail-screen");
+const detailTitle = document.getElementById("detail-title");
+const transcriptBody = document.getElementById("transcript-body");
+const audioStatus = document.getElementById("audio-status");
+
+let currentTour = null;
+
+function openDetail(tour){
+  currentTour = tour;
+  detailTitle.textContent = tour.title;
+  transcriptBody.innerHTML = tour.transcript.map(p => `<p>${p}</p>`).join("");
+  transcriptBody.scrollTop = 0;
+  loadAudio(tour);
+
+  homeScreen.classList.remove("active");
+  detailScreen.classList.add("active");
+}
+
+function closeDetail(){
+  stopAudio();
+  detailScreen.classList.remove("active");
+  homeScreen.classList.add("active");
+}
+document.getElementById("back-btn").addEventListener("click", closeDetail);
+
+/* ============================================================
+   播放器邏輯
+   ============================================================ */
+const audio = document.getElementById("audio-player");
+const playBtn = document.getElementById("play-btn");
+const playIcon = document.getElementById("play-icon");
+const pauseIcon = document.getElementById("pause-icon");
+const stopBtn = document.getElementById("stop-btn");
+const seek = document.getElementById("seek");
+const timeCurrent = document.getElementById("time-current");
+const timeTotal = document.getElementById("time-total");
+
+let isSeeking = false;
+
+function fmtTime(sec){
+  if(!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+}
+
+function loadAudio(tour){
+  audio.pause();
+  audio.src = tour.audioSrc;
+  audio.currentTime = 0;
+  seek.value = 0;
+  seek.style.setProperty("--pct", "0%");
+  timeCurrent.textContent = "00:00";
+  timeTotal.textContent = "00:00";
+  setPlayingUI(false);
+  audioStatus.textContent = "";
+  audio.load();
+}
+
+audio.addEventListener("loadedmetadata", () => {
+  timeTotal.textContent = fmtTime(audio.duration);
+  seek.max = audio.duration || 0;
+});
+
+audio.addEventListener("timeupdate", () => {
+  if(isSeeking) return;
+  timeCurrent.textContent = fmtTime(audio.currentTime);
+  seek.value = audio.currentTime;
+  const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+  seek.style.setProperty("--pct", pct + "%");
+});
+
+audio.addEventListener("ended", () => {
+  setPlayingUI(false);
+  audio.currentTime = 0;
+  seek.value = 0;
+  seek.style.setProperty("--pct", "0%");
+  timeCurrent.textContent = "00:00";
+});
+
+audio.addEventListener("error", () => {
+  audioStatus.textContent = "尚未放入音檔，請將錄音檔案加入 audio 資料夾（可先閱讀逐字稿）";
+});
+
+function setPlayingUI(playing){
+  if(playing){
+    playIcon.style.display = "none";
+    pauseIcon.style.display = "block";
+    playBtn.classList.add("is-playing");
+    playBtn.setAttribute("aria-label","暫停");
+  } else {
+    playIcon.style.display = "block";
+    pauseIcon.style.display = "none";
+    playBtn.classList.remove("is-playing");
+    playBtn.setAttribute("aria-label","播放");
+  }
+}
+
+playBtn.addEventListener("click", () => {
+  if(audio.paused){
+    audio.play().then(() => setPlayingUI(true)).catch(() => {
+      audioStatus.textContent = "尚未放入音檔，請將錄音檔案加入 audio 資料夾（可先閱讀逐字稿）";
+    });
+  } else {
+    audio.pause();
+    setPlayingUI(false);
+  }
+});
+
+function stopAudio(){
+  audio.pause();
+  audio.currentTime = 0;
+  setPlayingUI(false);
+  seek.value = 0;
+  seek.style.setProperty("--pct", "0%");
+  timeCurrent.textContent = "00:00";
+}
+stopBtn.addEventListener("click", stopAudio);
+
+seek.addEventListener("input", () => {
+  isSeeking = true;
+  const pct = audio.duration ? (seek.value / audio.duration) * 100 : 0;
+  seek.style.setProperty("--pct", pct + "%");
+  timeCurrent.textContent = fmtTime(seek.value);
+});
+seek.addEventListener("change", () => {
+  audio.currentTime = seek.value;
+  isSeeking = false;
+});
+
+</script>
+</body>
+</html>
