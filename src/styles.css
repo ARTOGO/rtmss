@@ -20,6 +20,10 @@
      includes the space behind the toolbars) and always leave the top bar free */
   --topbar-h: calc(3.2vh + 6vh + env(safe-area-inset-top, 0px));
   --sab: env(safe-area-inset-bottom, 0px);
+  /* the colour the page's bottom edge ends on. iOS can leave a strip below the
+     layout viewport that only ever gets a flat fill, so the page fades into
+     exactly this colour and the seam cannot be seen, whatever its height. */
+  --edge: #9a4332;
   --sheet-h: 41%;                                          /* collapsed */
   --sheet-h-expanded: calc(100% - var(--topbar-h) - 2vh); /* pulled up: full transcript */
   --ease-out: cubic-bezier(.2,.8,.2,1);
@@ -35,10 +39,10 @@ html,body{
      over --app-h (the real window height the water canvas also uses) so the
      strip continues the gradient instead of showing a flat band; the fill
      colour past the image is the gradient's own last stop. */
-  background-color:var(--rust);
+  background-color:var(--edge);
   background-image:linear-gradient(162deg, #0a4a48 0%, var(--teal) 14%, #5f9092 30%, var(--mist) 42%, #c4c4a8 54%, var(--cream) 62%, #cfa07a 74%, #b46b4c 86%, var(--rust) 100%);
   background-repeat:no-repeat;
-  background-size:100% var(--bg-h, 100%);
+  background-size:100% 100%;
   font-family:var(--sans);
   color:var(--paper);
   user-select:none;
@@ -51,8 +55,7 @@ button{ font-family:inherit; }
    Built only from the four brand colours (teal / mist / cream / rust). */
 #stage-outer{
   position:fixed; top:0; left:0;
-  /* painted box: may reach past the layout viewport so no bare strip shows */
-  width:var(--app-w, 100%); height:var(--bg-h, 100%);
+  width:var(--app-w, 100%); height:var(--app-h, 100%);
   display:flex; align-items:center; justify-content:center;
   isolation:isolate;
   background-color:var(--teal);
@@ -76,6 +79,17 @@ button{ font-family:inherit; }
   pointer-events:none;
   z-index:0;
 }
+/* bottom edge fade: lands on exactly --edge, which is also the page's
+   background colour, so any strip iOS leaves below the viewport continues it */
+#stage-outer::after{
+  content:"";
+  position:absolute; left:0; right:0; bottom:0;
+  height:clamp(40px, 5.5%, 80px);
+  background:linear-gradient(to bottom, rgba(154,67,50,0) 0%, var(--edge) 85%, var(--edge) 100%);
+  pointer-events:none;
+  z-index:2;                 /* above the content layer too: the strip also shows below the sheet */
+}
+
 /* soft vignette so the corners recede and the ripples read as the focus */
 .vignette{
   position:absolute; inset:0;
@@ -85,11 +99,10 @@ button{ font-family:inherit; }
 }
 
 /* ---------- Stage: full-bleed ---------- */
-/* content box: the layout viewport, so nothing is clipped by iOS */
 #stage{
-  position:absolute; top:0; left:0;
+  position:absolute; inset:0;
   z-index:1;
-  width:100%; height:var(--app-h, 100%);
+  width:100%; height:100%;
   overflow:hidden;
   background:transparent;
 }

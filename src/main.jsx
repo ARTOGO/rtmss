@@ -67,28 +67,16 @@ const standalone = () =>
     const vv = window.visualViewport;
     const h = Math.round(Math.max(window.innerHeight || 0, vv ? vv.height : 0, document.documentElement.clientHeight || 0));
     const w = Math.round(Math.max(window.innerWidth || 0, vv ? vv.width : 0, document.documentElement.clientWidth || 0));
-    /* Two different heights are needed on iOS home-screen apps:
-
-       --app-h  the layout viewport (iPhone 16 Pro: 812). Fixed layers are
-                clipped to it, so all CONTENT must live inside it.
-       --bg-h   the real window (that phone: screen 874). The strip between the
-                two can only be painted by the root background, so the water
-                canvas and the CSS gradient are both drawn over --bg-h; the
-                strip then continues the same sweep instead of showing a band.
-
-       --bg-h only grows in a standalone (installed) app, and only up to the
-       screen size, so browsers and iPad (window 820 = screen 820) are
-       untouched. */
-    const sc = window.screen || {};
-    const screenH = w > h ? Math.min(sc.width || 0, sc.height || 0) : Math.max(sc.width || 0, sc.height || 0);
-    const inset = Math.round(probe.getBoundingClientRect().height || 0);
-    const grow = standalone() && screenH > h && screenH - h <= 200 ? screenH - h : 0;
-    root.style.setProperty("--sab-px", inset + "px");
+    /* The stage is exactly the layout viewport, so nothing is ever clipped.
+       On iOS home-screen apps the window can be taller than that viewport;
+       the strip left over can only be filled with a flat colour (never an
+       image), so instead of chasing its height we fade the bottom of the page
+       into that same colour — see --edge in styles.css. */
+    root.style.setProperty("--sab-px", Math.round(probe.getBoundingClientRect().height || 0) + "px");
 
     if (h > 0 && w > 0) {
       root.style.setProperty("--app-h", h + "px");
       root.style.setProperty("--app-w", w + "px");
-      root.style.setProperty("--bg-h", (h + grow) + "px");
     }
     if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
     window.dispatchEvent(new Event("rtmss:viewport"));
