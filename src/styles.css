@@ -19,7 +19,7 @@
   /* heights are % of the stage (the real visible area: on iPad Safari 100vh
      includes the space behind the toolbars) and always leave the top bar free */
   --topbar-h: calc(3.2vh + 6vh + env(safe-area-inset-top, 0px));
-  --sheet-h: 46%;                                          /* collapsed */
+  --sheet-h: 41%;                                          /* collapsed */
   --sheet-h-expanded: calc(100% - var(--topbar-h) - 2vh); /* pulled up: full transcript */
   --ease-out: cubic-bezier(.2,.8,.2,1);
 }
@@ -441,7 +441,7 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
 }
 
 /* progress */
-.sheet-progress{ flex:0 0 auto; margin-top:1.4vh; }
+.sheet-progress{ flex:0 0 auto; margin-top:.6vh; }
 input[type="range"].seek{
   -webkit-appearance:none; appearance:none;
   width:100%; height:2px; margin:1vh 0;
@@ -473,7 +473,7 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
 /* controls */
 .sheet-controls{
   flex:0 0 auto;
-  display:flex; align-items:center; justify-content:center; gap:6.5vmin;
+  display:flex; align-items:center; justify-content:center; gap:6vmin;
   margin-top:1.6vh;
 }
 .sheet-controls button{
@@ -482,27 +482,30 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
   display:flex; align-items:center; justify-content:center;
   position:relative;
 }
-.sheet-controls .skip{ width:5.8vh; height:5.8vh; }
+.sheet-controls .skip{ width:5.4vh; height:5.4vh; }
 .sheet-controls .skip svg{ width:100%; height:100%; overflow:visible; }
-.sheet-controls .nav{ width:5vh; height:5vh; opacity:.9; }
-.sheet-controls .nav svg{ width:62%; height:62%; }
+.sheet-controls .skip:active{ transform:scale(.92); }
+.sheet-controls .nav{ width:4.6vh; height:4.6vh; opacity:.92; }
+.sheet-controls .nav svg{ width:100%; height:100%; }
 .sheet-controls .nav:active{ transform:scale(.92); }
+/* play: filled disc, dark glyph (standard media-player look) */
 .sheet-controls .play{
-  width:9.2vh; height:9.2vh;
+  width:8.6vh; height:8.6vh;
   border-radius:50%;
-  border:1.5px solid rgba(251,246,236,.95);
-  background:rgba(255,255,255,.06);
-  box-shadow:0 0 0 0 rgba(255,255,255,0);
+  border:none;
+  background:#fbf6ec;
+  color:var(--teal-deep);
+  box-shadow:0 4px 16px rgba(0,0,0,.22);
   transition:background .25s ease, transform .15s ease;
 }
-.sheet-controls .play:active{ transform:scale(.95); background:rgba(255,255,255,.16); }
-.sheet-controls .play svg{ width:40%; height:40%; }
+.sheet-controls .play:active{ transform:scale(.95); background:#f1e9d6; }
+.sheet-controls .play svg{ width:46%; height:46%; }
 
 /* chevron: tap or pull to expand */
 .chevron{
   flex:0 0 auto;
   align-self:center;
-  height:3.6vh; margin-top:.6vh; padding:0 2vmin;
+  height:3.6vh; margin-top:2.2vh; padding:0 2vmin;
   border:none; background:none;
   color:rgba(251,246,236,.9); cursor:pointer;
   display:flex; align-items:center; justify-content:center; gap:.4em;

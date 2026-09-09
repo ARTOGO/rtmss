@@ -50,37 +50,31 @@ const BANDS = [[90, 250], [250, 600], [600, 1400], [1400, 3000], [3000, 6000]];
 const BAR_ORDER = [3, 1, 0, 2, 4];   // which band each bar (left→right) shows
 const IDLE = [0.45, 0.75, 1.0, 0.65, 0.5]; // resting shape
 
-/* circular-arrow "skip" glyph, iOS-style: an open ring with an arrowhead at
-   one end and the seconds in the middle. dir -1 = back (counter-clockwise),
-   +1 = forward (clockwise). */
+/* Material-style transport glyphs (24-unit grid). The skip glyph is the
+   "replay" / "forward" ring-arrow with the seconds set inside. */
+const REPLAY_D = "M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z";
+const FORWARD_D = "M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z";
+
 function SkipIcon({ dir, seconds }) {
-  const cx = 20, cy = 20, r = 12.5;
-  const gap = 34;                       // degrees of opening at the top
-  const a0 = (-90 - gap / 2) * Math.PI / 180;   // upper-left end
-  const a1 = (-90 + gap / 2) * Math.PI / 180;   // upper-right end
-  const P = (a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
-  // back: travel clockwise from upper-left around to upper-right, head at upper-left (pointing left/down)
-  // forward: mirror
-  const [sx, sy] = dir < 0 ? P(a1) : P(a0);
-  const [ex, ey] = dir < 0 ? P(a0) : P(a1);
-  const sweep = dir < 0 ? 0 : 1;
-  const arc = `M ${sx.toFixed(2)} ${sy.toFixed(2)} A ${r} ${r} 0 1 ${sweep} ${ex.toFixed(2)} ${ey.toFixed(2)}`;
-  // arrowhead tangent at the end point
-  const ang = dir < 0 ? a0 : a1;
-  const tx = dir < 0 ? -Math.sin(ang) : Math.sin(ang);   // direction of travel at the end
-  const ty = dir < 0 ? Math.cos(ang) : -Math.cos(ang);
-  const nx = -ty, ny = tx;
-  const L = 5.8, Wd = 4.2;
-  const tip = [ex + tx * L, ey + ty * L];
-  const b1 = [ex + nx * Wd, ey + ny * Wd];
-  const b2 = [ex - nx * Wd, ey - ny * Wd];
-  const head = `M ${tip[0].toFixed(2)} ${tip[1].toFixed(2)} L ${b1[0].toFixed(2)} ${b1[1].toFixed(2)} L ${b2[0].toFixed(2)} ${b2[1].toFixed(2)} Z`;
   return (
-    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-      <path d={arc} stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
-      <path d={head} fill="currentColor" />
-      <text x="20" y="20" textAnchor="middle" dominantBaseline="central" fill="currentColor"
-        fontSize="12.5" fontWeight="700" fontFamily="inherit">{seconds}</text>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d={dir < 0 ? REPLAY_D : FORWARD_D} fill="currentColor" />
+      <text x="12" y="15.6" textAnchor="middle" fill="currentColor"
+        fontSize="6.6" fontWeight="700" fontFamily="inherit" letterSpacing="-0.2">{seconds}</text>
+    </svg>
+  );
+}
+function PrevIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" fill="currentColor" />
+    </svg>
+  );
+}
+function NextIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z" fill="currentColor" />
     </svg>
   );
 }
@@ -307,23 +301,23 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
 
           <div className="sheet-controls" onPointerDown={(e) => e.stopPropagation()}>
             <button type="button" className="nav" aria-label="上一件作品" onClick={() => onStep(-1)}>
-              <svg viewBox="0 0 24 24" fill="none"><path d="M15 5L8 12L15 19" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <PrevIcon />
             </button>
             <button type="button" className="skip" aria-label={`倒退 ${SKIP} 秒`} onClick={() => skip(-SKIP)}>
               <SkipIcon dir={-1} seconds={SKIP} />
             </button>
             <button type="button" className="play" aria-label={playing ? "暫停" : "播放"} onClick={toggle}>
               {playing ? (
-                <svg viewBox="0 0 24 24" fill="none"><rect x="7" y="5.5" width="3.2" height="13" rx="1" fill="currentColor" /><rect x="13.8" y="5.5" width="3.2" height="13" rx="1" fill="currentColor" /></svg>
+                <svg viewBox="0 0 24 24" fill="none"><rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="currentColor" /><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="currentColor" /></svg>
               ) : (
-                <svg viewBox="0 0 24 24" fill="none"><path d="M8.5 5.5v13l10.5-6.5z" fill="currentColor" /></svg>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
               )}
             </button>
             <button type="button" className="skip" aria-label={`快轉 ${SKIP} 秒`} onClick={() => skip(SKIP)}>
               <SkipIcon dir={1} seconds={SKIP} />
             </button>
             <button type="button" className="nav" aria-label="下一件作品" onClick={() => onStep(1)}>
-              <svg viewBox="0 0 24 24" fill="none"><path d="M9 5L16 12L9 19" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <NextIcon />
             </button>
           </div>
 
