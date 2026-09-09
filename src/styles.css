@@ -398,10 +398,11 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
 
 /* subtitle (collapsed) / transcript (expanded) */
 .sheet-text{
-  flex:1 1 auto; min-height:0;
+  flex:1 0 auto;              /* collapsed: never squash the subtitle */
   margin-top:2.6vh;
   display:flex; flex-direction:column;
 }
+.sheet.expanded .sheet-text{ flex:1 1 auto; min-height:0; }
 .subtitle{
   margin:0;
   font-family:var(--serif);

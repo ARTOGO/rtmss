@@ -85,6 +85,8 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
   const seeking = useRef(false);
   const grip = useRef(null);
   const barRefs = useRef([]);
+  const sheetRef = useRef(null);
+  const bodyRef = useRef(null);
   const graph = useRef(null);      // { ctx, analyser, data, hz }
   const meterRaf = useRef(0);
 
@@ -196,6 +198,26 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
     return () => { if (meterRaf.current) cancelAnimationFrame(meterRaf.current); meterRaf.current = 0; resetHero(); };
   }, [playing]);
 
+  /* collapsed height follows the content (never below 41% of the stage), so a
+     short viewport (iPad Safari with toolbars) can't squash the subtitle onto
+     the progress bar; expanded height comes from CSS */
+  useEffect(() => {
+    const sheet = sheetRef.current, body = bodyRef.current;
+    if (!sheet || !body) return undefined;
+    const fit = () => {
+      if (expanded) { sheet.style.height = ""; return; }
+      const stageH = sheet.parentElement ? sheet.parentElement.clientHeight : window.innerHeight;
+      // measure the natural content height (scrollHeight never shrinks below the
+      // current box, so release the box first), then apply the floor
+      sheet.style.height = "auto";
+      const need = body.scrollHeight;
+      sheet.style.height = Math.max(need, stageH * 0.36) + "px";
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [expanded, open, tour, cueIdx]);
+
   /* keep the highlighted cue in view when the transcript is expanded */
   useEffect(() => {
     if (!expanded || cueIdx < 0 || !listRef.current) return;
@@ -243,6 +265,7 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
       </div>
 
       <section
+        ref={sheetRef}
         className={`sheet${open ? " open" : ""}${expanded ? " expanded" : ""}`}
         aria-hidden={!open}
         onPointerDown={onGripDown}
@@ -262,7 +285,7 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
 
         <div className="sheet-glass" aria-hidden="true" />
 
-        <div className="sheet-body">
+        <div className="sheet-body" ref={bodyRef}>
           <header className="sheet-head">
             <div className="sheet-title">
               <span className="num">{tour ? String(tour.id).padStart(2, "0") : ""}</span>
