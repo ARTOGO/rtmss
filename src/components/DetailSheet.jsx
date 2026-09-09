@@ -87,6 +87,9 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
   const barRefs = useRef([]);
   const sheetRef = useRef(null);
   const bodyRef = useRef(null);
+  const titleWrapRef = useRef(null);
+  const titleRef = useRef(null);
+  const [marquee, setMarquee] = useState(0);   // px the title must travel, 0 = fits
   const graph = useRef(null);      // { ctx, analyser, data, hz }
   const meterRaf = useRef(0);
 
@@ -218,6 +221,19 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
     return () => window.removeEventListener("resize", fit);
   }, [expanded, open, tour, cueIdx]);
 
+  /* long title: measure the overflow and let CSS sweep it back and forth */
+  useEffect(() => {
+    const wrap = titleWrapRef.current, h1 = titleRef.current;
+    if (!wrap || !h1) return undefined;
+    const fit = () => {
+      const over = h1.scrollWidth - wrap.clientWidth;
+      setMarquee(over > 4 ? over : 0);
+    };
+    const t = setTimeout(fit, 60);
+    window.addEventListener("resize", fit);
+    return () => { clearTimeout(t); window.removeEventListener("resize", fit); };
+  }, [tour, open]);
+
   /* keep the highlighted cue in view when the transcript is expanded */
   useEffect(() => {
     if (!expanded || cueIdx < 0 || !listRef.current) return;
@@ -287,14 +303,14 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
 
         <div className="sheet-body" ref={bodyRef}>
           <header className="sheet-head">
-            <div className="sheet-title">
-              <span className="num">{tour ? String(tour.id).padStart(2, "0") : ""}</span>
-              <h1>{tour ? tour.title : ""}</h1>
-            </div>
-            <div className={`wave${playing ? " on" : ""}${meterFallback ? " fallback" : ""}`} aria-hidden="true">
-              {Array.from({ length: BARS }, (_, i) => (
-                <i key={i} ref={(el) => { barRefs.current[i] = el; }} style={{ transform: `scaleY(${IDLE[i]})` }} />
-              ))}
+            <div className="sheet-title" ref={titleWrapRef}>
+              <h1
+                ref={titleRef}
+                className={marquee ? "marquee" : ""}
+                style={marquee ? { "--shift": `-${marquee + 12}px`, "--dur": `${Math.max(6, 4 + marquee / 25)}s` } : undefined}
+              >
+                {tour ? tour.title : ""}
+              </h1>
             </div>
           </header>
 

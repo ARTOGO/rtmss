@@ -374,16 +374,10 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
   display:flex; align-items:flex-start; justify-content:space-between; gap:3vmin;
   flex:0 0 auto;
 }
-.sheet-title{ display:flex; align-items:baseline; gap:.55em; min-width:0; }
-.sheet-title .num{
-  font-family:var(--serif);
-  font-size:3.6vh;
-  font-weight:700;
-  letter-spacing:.06em;
-  line-height:1;
-  text-shadow:0 1px 8px rgba(0,0,0,.25);
-}
+/* title: single line; when it overflows it sweeps back and forth (marquee) */
+.sheet-title{ flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; }
 .sheet-title h1{
+  display:inline-block;
   margin:0;
   font-family:var(--serif);
   font-weight:700;
@@ -391,7 +385,14 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
   text-shadow:0 1px 8px rgba(0,0,0,.25);
   letter-spacing:.14em;
   line-height:1.15;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap;
+  will-change:transform;
+}
+.sheet-title h1.marquee{ animation:title-sweep var(--dur, 8s) ease-in-out infinite; }
+@keyframes title-sweep{
+  0%, 18%   { transform:translateX(0); }
+  50%, 62%  { transform:translateX(var(--shift, 0px)); }
+  94%, 100% { transform:translateX(0); }
 }
 /* waveform glyph: bar heights follow the real audio level (DetailSheet meter);
    .fallback = analyser unavailable → CSS animation while playing */
@@ -683,7 +684,7 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
 @media (prefers-reduced-motion: reduce){
   .unit-fx .pulse{ animation:none; opacity:0; }
   .sheet-glass::after{ animation:none; display:none; }
-  .wave.fallback.on i{ animation:none; }
+  .sheet-title h1.marquee{ animation:none; }
   .subtitle{ animation:none; }
   .sheet, .ripple-unit, .detail-topbar, .home-header, .home-caption, .info-btn{ transition:none; }
   .guide-backdrop{ animation:none; } .guide-status .spin{ animation:none; }
