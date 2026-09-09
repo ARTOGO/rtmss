@@ -176,11 +176,39 @@ export default function InstallGuide({ hidden }) {
               )}
 
               {standalone && (
-                <p className="guide-note">
-                  <strong>長按首頁左上的標題 1.5 秒</strong>可隨時開啟這張狀態卡。<br />
-                  展場建議：設定 → 螢幕顯示與亮度 → 自動鎖定「永不」；設定 → 輔助使用 → 引導使用模式，
-                  在 App 內連按三下頂端按鈕即可鎖定畫面。
-                </p>
+                <div className="guide-kiosk">
+                  <p className="guide-note">
+                    離線安裝已完成，這台裝置沒有網路也能使用。<strong>長按首頁左上的標題 1.5 秒</strong>
+                    可隨時開啟這張卡；觀眾不會看到它。
+                  </p>
+
+                  <h3>展場設定（佈展時各做一次）</h3>
+                  <ol className="guide-steps">
+                    <li>
+                      <span className="n">1</span>
+                      <div>
+                        <strong>讓螢幕不要自動關掉</strong>
+                        <small>
+                          「設定」App → 螢幕顯示與亮度 → 自動鎖定 → 選「<b>永不</b>」。<br />
+                          預設幾分鐘沒人操作就會關螢幕，觀眾會以為機器壞了。螢幕全天亮著較耗電，木箱內請接著電源。
+                        </small>
+                      </div>
+                    </li>
+                    <li>
+                      <span className="n">2</span>
+                      <div>
+                        <strong>把觀眾鎖在這個 App 裡（引導使用模式）</strong>
+                        <small>
+                          開啟後觀眾無法滑出去、跳到其他 App 或更改設定，只能使用語音導覽；要離開需輸入密碼。<br />
+                          <b>①</b> 「設定」App → 輔助使用 → 引導使用模式 → 打開，並在「密碼設定」中設一組密碼。<br />
+                          <b>②</b> 回到本 App，<b>連按三下實體按鍵</b>（有 Home 鍵的機型按 Home 鍵，沒有 Home 鍵的按頂端電源鍵），
+                          再點畫面上的「開始」。<br />
+                          <b>③</b> 要解除：同樣連按三下，輸入密碼後點「結束」。
+                        </small>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
               )}
 
               <footer className="guide-foot">

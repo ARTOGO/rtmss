@@ -30,12 +30,15 @@ html,body{
   margin:0; padding:0; width:100%; height:100%;
   min-height:100dvh;
   overflow:hidden;
-  /* same sweep as the water so any strip the fixed layer misses is not a flat band;
-     no repeat, and the fill colour past the image is the water's bottom tone */
-  background-color:#b46b4c;
+  /* iOS home-screen apps clip fixed layers to the layout viewport, so the strip
+     below it can only be painted by the root background. Draw the same sweep
+     over --app-h (the real window height the water canvas also uses) so the
+     strip continues the gradient instead of showing a flat band; the fill
+     colour past the image is the gradient's own last stop. */
+  background-color:var(--rust);
   background-image:linear-gradient(162deg, #0a4a48 0%, var(--teal) 14%, #5f9092 30%, var(--mist) 42%, #c4c4a8 54%, var(--cream) 62%, #cfa07a 74%, #b46b4c 86%, var(--rust) 100%);
   background-repeat:no-repeat;
-  background-size:100% 100%;
+  background-size:100% var(--app-h, 100%);
   font-family:var(--sans);
   color:var(--paper);
   user-select:none;
@@ -667,6 +670,14 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
   font-size:clamp(13px, 1.55vh, 16px); line-height:1.7; letter-spacing:.03em;
   color:rgba(251,246,236,.85);
 }
+.guide-kiosk h3{
+  margin:2.4vh 0 0 0;
+  font-size:clamp(14px, 1.75vh, 18px); font-weight:700; letter-spacing:.1em;
+  color:#fbf6ec;
+}
+.guide-kiosk .guide-steps{ margin-top:1.4vh; }
+.guide-kiosk .guide-steps small{ line-height:1.75; }
+.guide-kiosk .guide-steps small b{ font-weight:700; color:rgba(251,246,236,.92); }
 .guide-foot{
   margin-top:2.2vh;
   display:flex; align-items:center; justify-content:space-between; gap:2vmin;
