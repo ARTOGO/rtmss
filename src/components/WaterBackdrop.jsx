@@ -23,7 +23,8 @@ import { RIPPLE, pruneRipples, nowSec } from "../lib/ripples.js";
    hidden, one still frame under prefers-reduced-motion.
    ------------------------------------------------------------------ */
 
-const RENDER_SCALE = 0.42;
+const RENDER_SCALE = 0.42;        // upper bound; see targetScale()
+const MAX_PIXELS = 150000;        // internal resolution budget (about 390x385): phones stay smooth
 const MAX_FPS = 30;
 
 const VERT = `
@@ -112,7 +113,7 @@ float noise(vec2 p){
 }
 float fbm(vec2 p){
   float v = 0.0, a = 0.5;
-  for (int i = 0; i < 4; i++){ v += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; }
+  for (int i = 0; i < 3; i++){ v += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; }
   return v;
 }
 float ridge(float n, float k){ return pow(1.0 - abs(n * 2.0 - 1.0), k); }
@@ -242,11 +243,13 @@ export default function WaterBackdrop() {
     const rippleData = new Float32Array(RIPPLE.MAX * 4);
 
     let cssW = 1, cssH = 1;
+    const targetScale = (w, h) => Math.min(RENDER_SCALE, Math.sqrt(MAX_PIXELS / Math.max(1, w * h)));
     function resize() {
       cssW = canvas.clientWidth || 1;
       cssH = canvas.clientHeight || 1;
-      const w = Math.max(1, Math.round(cssW * RENDER_SCALE));
-      const h = Math.max(1, Math.round(cssH * RENDER_SCALE));
+      const sc = targetScale(cssW, cssH);
+      const w = Math.max(1, Math.round(cssW * sc));
+      const h = Math.max(1, Math.round(cssH * sc));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w; canvas.height = h;
         gl.viewport(0, 0, w, h);

@@ -27,7 +27,7 @@ const DRAG_THRESHOLD = 10;       // px
 
 const rnd = (i, n) => { const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
 
-const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen, dragRef, focused, dimmed }, ref) {
+const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen, dragRef, focused, dimmed, artSrc }, ref) {
   const [sonars, setSonars] = useState([]);
   const press = useRef(null);
   const pulsePeriod = (6.5 + rnd(index, 7) * 2.5).toFixed(2);
@@ -95,13 +95,21 @@ const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen,
         aspectRatio: `${ART_W} / ${ART_H}`
       }}
     >
-      <svg className="unit-art" viewBox={ART_VIEWBOX} aria-hidden="true">
-        <use href="#kv-ripple" />
-        {/* hero highlight: the artwork's own inner rings, lit up — ring 1 always
-            while focused, rings 2/3 progressively with the audio level */}
-        <path className="hero-ring hero-ring-1" d={INNER_RING_D} />
-        <path className="hero-ring hero-ring-2" d={RING2_D} />
-        <path className="hero-ring hero-ring-3" d={RING3_D} />
+      {/* the artwork: a shared pre-rendered bitmap (cheap to scale); vector fallback until ready */}
+      {artSrc ? (
+        <img className="unit-art" src={artSrc} alt="" draggable={false} aria-hidden="true" />
+      ) : (
+        <svg className="unit-art" viewBox={ART_VIEWBOX} aria-hidden="true"><use href="#kv-ripple" /></svg>
+      )}
+      {/* light overlay: outward pulses + (only while focused) the glowing inner rings */}
+      <svg className="unit-fx" viewBox={ART_VIEWBOX} aria-hidden="true">
+        {focused && (
+          <>
+            <path className="hero-ring hero-ring-1" d={INNER_RING_D} />
+            <path className="hero-ring hero-ring-2" d={RING2_D} />
+            <path className="hero-ring hero-ring-3" d={RING3_D} />
+          </>
+        )}
         {Array.from({ length: PULSE_COUNT }, (_, p) => (
           <path
             key={p}

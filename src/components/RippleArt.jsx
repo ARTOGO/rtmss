@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import rippleSvg from "../assets/ripple.svg?raw";
 
 /* ------------------------------------------------------------------
@@ -22,6 +22,45 @@ export const INNER_RING_D =
    while a tour is playing (see DetailSheet's meter) */
 export const RING2_D = "M409.13,581.65c2.68,14.86,7.86,26.48,15.72,34.34s19.49,13,34.34,15.72c14.53,2.67,33.93,4.14,58.34,4.14s43.83-1.41,58.75-4.14c14.45-2.64,26.07-7.86,33.93-15.72s13.44-19.41,16.13-34.34,3.73-34.76,3.73-59.58c0-24.41-1-44.31-3.73-59.17s-8.27-26.48-16.13-34.34-19.4-13.47-33.93-16.13c-14.85-2.73-34.34-3.73-58.75-3.73s-43.89,1.08-58.34,3.73c-14.92,2.73-26.48,8.27-34.34,16.13s-13,19.48-15.72,34.34S405,497.66,405,522.07C405,546.89,406.43,566.72,409.13,581.65Z";
 export const RING3_D = "M383.18,595.86c3.33,18.41,9.75,32.82,19.49,42.56s24.15,16.11,42.56,19.48c18,3.3,42,5.13,72.3,5.13s54.31-1.74,72.81-5.13c17.91-3.27,32.31-9.74,42-19.48s16.66-24.06,20-42.56S657,552.79,657,522c0-30.25-1.29-54.91-4.61-73.33s-10.26-32.81-20-42.56-24-16.69-42-20c-18.41-3.38-42.56-4.62-72.81-4.62s-54.39,1.34-72.3,4.62c-18.5,3.38-32.82,10.25-42.56,20s-16.16,24.15-19.49,42.56-5.12,43.08-5.12,73.33C378.06,552.79,379.84,577.35,383.18,595.86Z";
+
+/* ------------------------------------------------------------------
+   useRippleBitmap — rasterise the artwork ONCE into a PNG (blob URL) that
+   every unit displays with <img>. The units scale every frame; scaling a
+   bitmap is a GPU texture operation, whereas scaling 93 vector paths
+   re-rasterises them each frame (this made phones stutter). Resolution
+   follows the device so the hero stays crisp. Returns null until ready
+   (units fall back to the vector <use> meanwhile).
+   ------------------------------------------------------------------ */
+export function useRippleBitmap() {
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    let url = null, cancelled = false;
+    const short = Math.min(window.innerWidth, window.innerHeight);
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    // largest on-screen size is about 0.416 x short side x hero scale 1.55
+    const px = Math.max(700, Math.min(1600, Math.round(short * 0.416 * 1.55 * dpr)));
+    const svgText = rippleSvg.replace("<svg ", `<svg width="${ART_W}" height="${ART_H}" `);
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = px;
+        canvas.height = Math.round((px * ART_H) / ART_W);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (!blob || cancelled) return;
+          url = URL.createObjectURL(blob);
+          setSrc(url);
+        }, "image/png");
+      } catch (_) { setSrc(null); }
+    };
+    img.onerror = () => setSrc(null);
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgText);
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
+  }, []);
+  return src;
+}
 
 /* strip the outer <svg …> … </svg> wrapper, keep <defs><style> + paths */
 function innerMarkup(svgText) {

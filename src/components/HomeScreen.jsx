@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import RippleDefs from "./RippleArt.jsx";
+import RippleDefs, { useRippleBitmap } from "./RippleArt.jsx";
 import RippleUnit from "./RippleUnit.jsx";
 import useUnitPhysics from "../hooks/useUnitPhysics.js";
 import { addRipple } from "../lib/ripples.js";
@@ -15,6 +15,7 @@ export default function HomeScreen({ tours, focus, onOpen }) {
   const dragRef = useRef({ index: -1, active: false, x: 0, y: 0, grabDX: 0, grabDY: 0 });
   const focusRef = useRef(-1);
   focusRef.current = focus;
+  const artSrc = useRippleBitmap();
 
   useUnitPhysics({ stageRef: fieldRef, unitRefs, layout: LAYOUT, tapSignal, dragRef, focusRef });
 
@@ -98,6 +99,7 @@ export default function HomeScreen({ tours, focus, onOpen }) {
             dragRef={dragRef}
             focused={i === focus}
             dimmed={focused && i !== focus}
+            artSrc={artSrc}
           />
         ))}
       </div>

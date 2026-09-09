@@ -142,29 +142,31 @@ button{ font-family:inherit; }
 .ripple-unit.is-dim{ opacity:0; }
 .ripple-unit.is-focus{ z-index:4; }
 
-.unit-art{
+.unit-art, .unit-fx{
   position:absolute; inset:0;
   width:100%; height:100%;
   display:block;
   overflow:visible;
   pointer-events:none;
 }
-/* hero highlight: the artwork's innermost ring, brightened + glowing (filter in RippleArt) */
-.unit-art .hero-ring{
+img.unit-art{ -webkit-user-drag:none; user-select:none; }
+/* hero highlight: the artwork's inner rings, brightened + glowing (filter in RippleArt).
+   Only rendered while focused, so the blur filter costs nothing on the other nine. */
+.unit-fx .hero-ring{
   fill:none;
   stroke:#ffffff;
   stroke-width:7;
   stroke-linejoin:round;
   opacity:0;
   filter:url(#hero-glow);
-  transition:opacity .6s ease;
+  animation:hero-in .6s ease forwards;
 }
-.is-focus .unit-art .hero-ring-1{ opacity:.95; }
+@keyframes hero-in{ to{ opacity:.95; } }
 /* rings 2 / 3: opacity + stroke width are written per frame by the audio meter */
-.unit-art .hero-ring-2, .unit-art .hero-ring-3{ stroke-width:5; transition:opacity .12s linear; }
+.unit-fx .hero-ring-2, .unit-fx .hero-ring-3{ stroke-width:5; animation:none; transition:opacity .12s linear; }
 
 /* outward-travelling pulse, same shape as the artwork's innermost ring */
-.unit-art .pulse{
+.unit-fx .pulse{
   fill:none;
   stroke:rgba(255,255,255,.85);
   stroke-width:5;
@@ -314,8 +316,8 @@ button{ font-family:inherit; }
   background:
     linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.04) 30%, rgba(255,255,255,0) 60%),
     linear-gradient(180deg, rgba(14,42,44,.42) 0%, rgba(14,42,44,.52) 100%);
-  -webkit-backdrop-filter:blur(28px) saturate(130%);
-  backdrop-filter:blur(28px) saturate(130%);
+  -webkit-backdrop-filter:blur(16px) saturate(130%);
+  backdrop-filter:blur(16px) saturate(130%);
   border-top:1px solid rgba(255,255,255,.55);
   box-shadow:
     0 -24px 70px rgba(8,30,30,.28),
@@ -526,7 +528,7 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
    reduced motion
    ============================================================ */
 @media (prefers-reduced-motion: reduce){
-  .unit-art .pulse{ animation:none; opacity:0; }
+  .unit-fx .pulse{ animation:none; opacity:0; }
   .sheet-glass::after{ animation:none; display:none; }
   .wave.fallback.on i{ animation:none; }
   .subtitle{ animation:none; }
