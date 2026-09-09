@@ -137,8 +137,16 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("message", (e) => {
-  if (e.data && e.data.type === "CHECK") {
+  if (!e.data) return;
+  if (e.data.type === "CHECK") {
     e.waitUntil(ensureAll().then((n) => e.source && e.source.postMessage({ type: "SW_CHECKED", healed: n })));
+  } else if (e.data.type === "STATUS") {
+    e.waitUntil((async () => {
+      const cache = await caches.open(CACHE);
+      const have = new Set((await cache.keys()).map((r) => r.url));
+      const cached = ASSETS.filter((p) => have.has(url(p))).length;
+      if (e.source) e.source.postMessage({ type: "SW_STATUS", total: ASSETS.length, cached, build: BUILD });
+    })());
   }
 });
 `;

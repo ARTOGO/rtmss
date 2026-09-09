@@ -27,8 +27,10 @@
 *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
 html,body{
   margin:0; padding:0; width:100%; height:100%;
+  min-height:100dvh;
   overflow:hidden;
-  background:var(--teal);
+  /* same sweep as the water so any strip the fixed layer misses is not a flat band */
+  background:var(--teal) linear-gradient(162deg, #0a4a48 0%, var(--teal) 14%, #5f9092 30%, var(--mist) 42%, #c4c4a8 54%, var(--cream) 62%, #cfa07a 74%, #b46b4c 86%, var(--rust) 100%) fixed;
   font-family:var(--sans);
   color:var(--paper);
   user-select:none;
@@ -41,6 +43,7 @@ button{ font-family:inherit; }
    Built only from the four brand colours (teal / mist / cream / rust). */
 #stage-outer{
   position:fixed; inset:0;
+  min-height:100dvh;
   display:flex; align-items:center; justify-content:center;
   isolation:isolate;
   background-color:var(--teal);
@@ -534,6 +537,140 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
 .pwa-toast.show{ opacity:1; transform:translate(-50%, 0); }
 
 /* ============================================================
+   INSTALL GUIDE (staff): ⓘ button + glass card
+   ============================================================ */
+.info-btn{
+  position:absolute;
+  top:calc(3.2vh + env(safe-area-inset-top, 0px));
+  right:5vmin;
+  width:5vh; height:5vh;
+  border-radius:50%;
+  border:1.3px solid rgba(251,246,236,.75);
+  background:rgba(14,42,44,.18);
+  color:#fbf6ec;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; z-index:6;
+  transition:opacity .4s ease;
+}
+.info-btn svg{ width:60%; height:60%; }
+.info-btn.hidden{ opacity:0; pointer-events:none; }
+
+.guide-backdrop{
+  position:absolute; inset:0;
+  z-index:20;
+  display:flex; align-items:center; justify-content:center;
+  padding:4vh 5vmin;
+  background:rgba(8,30,30,.35);
+  animation:guide-in .35s ease;
+}
+@keyframes guide-in{ from{ opacity:0; } to{ opacity:1; } }
+.guide{
+  position:relative;
+  width:min(92vw, 560px);
+  max-height:92%;
+  border-radius:24px;
+  overflow:hidden;
+  color:#fbf6ec;
+}
+.guide-glass{
+  position:absolute; inset:0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.04) 40%, rgba(255,255,255,0) 100%),
+    linear-gradient(180deg, rgba(14,42,44,.72) 0%, rgba(14,42,44,.82) 100%);
+  -webkit-backdrop-filter:blur(18px) saturate(130%);
+  backdrop-filter:blur(18px) saturate(130%);
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:24px;
+}
+.guide-body{
+  position:relative;
+  padding:3vh 5vmin 2.4vh 5vmin;
+  max-height:92vh; overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.guide-head{ display:flex; align-items:center; justify-content:space-between; gap:2vmin; }
+.guide-head h2{
+  margin:0;
+  font-family:var(--serif);
+  font-size:clamp(18px, 2.6vh, 28px);
+  font-weight:700; letter-spacing:.12em;
+}
+.guide-close{
+  width:4.4vh; height:4.4vh; border-radius:50%;
+  border:1px solid rgba(251,246,236,.5); background:none; color:#fbf6ec; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.guide-close svg{ width:50%; height:50%; }
+
+.guide-status{
+  list-style:none; margin:2vh 0 0 0; padding:1.6vh 2.4vmin;
+  border-radius:14px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18);
+  font-size:clamp(14px, 1.75vh, 18px); font-weight:700; letter-spacing:.04em;
+}
+.guide-status li{ display:flex; align-items:center; gap:1.6vmin; padding:.5vh 0; opacity:.75; }
+.guide-status li.done{ opacity:1; }
+.guide-status .mark{
+  width:2.6vh; height:2.6vh; flex:0 0 auto;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  border:1.5px solid rgba(251,246,236,.6);
+}
+.guide-status li.done .mark{ background:#fbf6ec; color:var(--teal-deep); border-color:#fbf6ec; }
+.guide-status .mark svg{ width:70%; height:70%; }
+.guide-status .dot{ width:.7vh; height:.7vh; border-radius:50%; background:rgba(251,246,236,.7); }
+.guide-status .spin{
+  width:1.4vh; height:1.4vh; border-radius:50%;
+  border:2px solid rgba(251,246,236,.35); border-top-color:#fbf6ec;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.guide-steps{
+  list-style:none; margin:2vh 0 0 0; padding:0;
+  display:flex; flex-direction:column; gap:1.6vh;
+}
+.guide-steps li{ display:flex; gap:2.4vmin; align-items:flex-start; }
+.guide-steps .n{
+  flex:0 0 auto;
+  width:3.2vh; height:3.2vh; border-radius:50%;
+  background:#fbf6ec; color:var(--teal-deep);
+  font-weight:800; font-size:1.7vh;
+  display:flex; align-items:center; justify-content:center;
+}
+.guide-steps strong{
+  display:block;
+  font-size:clamp(15px, 1.9vh, 20px); font-weight:700; letter-spacing:.03em; line-height:1.5;
+}
+.guide-steps small{
+  display:block; margin-top:.3vh;
+  font-size:clamp(12px, 1.45vh, 15px); color:rgba(251,246,236,.75); letter-spacing:.03em;
+}
+.guide-steps .ico{
+  display:inline-flex; vertical-align:-.25em; margin:0 .15em;
+  width:1.25em; height:1.25em;
+  border-radius:.25em; border:1px solid rgba(251,246,236,.6); padding:.1em;
+}
+.guide-steps .ico svg{ width:100%; height:100%; }
+
+.guide-note{
+  margin:2vh 0 0 0;
+  font-size:clamp(13px, 1.55vh, 16px); line-height:1.7; letter-spacing:.03em;
+  color:rgba(251,246,236,.85);
+}
+.guide-foot{
+  margin-top:2.2vh;
+  display:flex; align-items:center; justify-content:space-between; gap:2vmin;
+}
+.guide-foot .meta{ font-size:clamp(11px, 1.3vh, 13px); color:rgba(251,246,236,.6); letter-spacing:.04em; font-variant-numeric:tabular-nums; }
+.guide-recheck{
+  border:1px solid rgba(251,246,236,.6); border-radius:999px;
+  background:none; color:#fbf6ec; cursor:pointer;
+  padding:.8vh 3vmin; font-size:clamp(12px, 1.5vh, 15px); font-weight:700; letter-spacing:.08em;
+}
+
+/* ============================================================
    reduced motion
    ============================================================ */
 @media (prefers-reduced-motion: reduce){
@@ -541,5 +678,6 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
   .sheet-glass::after{ animation:none; display:none; }
   .wave.fallback.on i{ animation:none; }
   .subtitle{ animation:none; }
-  .sheet, .ripple-unit, .detail-topbar, .home-header, .home-caption{ transition:none; }
+  .sheet, .ripple-unit, .detail-topbar, .home-header, .home-caption, .info-btn{ transition:none; }
+  .guide-backdrop{ animation:none; } .guide-status .spin{ animation:none; }
 }

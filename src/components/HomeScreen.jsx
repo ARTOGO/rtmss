@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import RippleDefs, { useRippleBitmap } from "./RippleArt.jsx";
 import RippleUnit from "./RippleUnit.jsx";
+import InstallGuide from "./InstallGuide.jsx";
 import useUnitPhysics from "../hooks/useUnitPhysics.js";
 import { addRipple } from "../lib/ripples.js";
 import { LAYOUT } from "../data/tours.js";
@@ -105,6 +106,8 @@ export default function HomeScreen({ tours, focus, onOpen, navRef }) {
       </div>
 
       <div className="home-caption">點擊水波，聆聽歲月深處的回聲</div>
+
+      <InstallGuide hidden={focused} />
     </section>
   );
 }
