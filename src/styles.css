@@ -468,7 +468,7 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
 /* controls */
 .sheet-controls{
   flex:0 0 auto;
-  display:flex; align-items:center; justify-content:center; gap:9vmin;
+  display:flex; align-items:center; justify-content:center; gap:6.5vmin;
   margin-top:1.6vh;
 }
 .sheet-controls button{
@@ -477,14 +477,11 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
   display:flex; align-items:center; justify-content:center;
   position:relative;
 }
-.sheet-controls .skip{ width:5.6vh; height:5.6vh; }
-.sheet-controls .skip svg{ width:100%; height:100%; }
-.sheet-controls .skip span{
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  font-size:1.35vh; font-weight:600; letter-spacing:.02em;
-  padding-top:.4vh;
-}
+.sheet-controls .skip{ width:5.8vh; height:5.8vh; }
+.sheet-controls .skip svg{ width:100%; height:100%; overflow:visible; }
+.sheet-controls .nav{ width:5vh; height:5vh; opacity:.9; }
+.sheet-controls .nav svg{ width:62%; height:62%; }
+.sheet-controls .nav:active{ transform:scale(.92); }
 .sheet-controls .play{
   width:9.2vh; height:9.2vh;
   border-radius:50%;
@@ -500,12 +497,13 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
 .chevron{
   flex:0 0 auto;
   align-self:center;
-  width:8vh; height:3.4vh; margin-top:.6vh;
-  border:none; background:none; padding:0;
-  color:rgba(251,246,236,.85); cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
+  height:3.6vh; margin-top:.6vh; padding:0 2vmin;
+  border:none; background:none;
+  color:rgba(251,246,236,.9); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:.4em;
+  font-size:1.5vh; font-weight:700; letter-spacing:.14em;
 }
-.chevron svg{ width:3vh; height:3vh; transition:transform .4s var(--ease-out); }
+.chevron svg{ width:2.6vh; height:2.6vh; transition:transform .4s var(--ease-out); }
 .sheet.expanded .chevron svg{ transform:rotate(180deg); }
 
 /* offline-install confirmation */

@@ -60,7 +60,8 @@ const P = {
   focusSpring: 26,     // swim to / from the hero spot (1/s²)
   focusDamp: 9.5,      // its damping (1/s)  → settles in ~0.7 s, slight overshoot
   focusBreath: 0.025,  // hero breathes ± this around HERO.scale
-  returnTime: 1.6      // seconds the return spring stays active after closing
+  returnTime: 1.6,     // seconds the return spring stays active after closing
+  slideExit: 2.6       // prev/next: outgoing hero's sideways kick, × viewport width per second
 };
 
 /* deterministic per-unit random in [0,1) */
@@ -70,7 +71,7 @@ function rnd(i, n) {
 }
 const lerpR = (i, n, [a, b]) => a + rnd(i, n) * (b - a);
 
-export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, dragRef, focusRef }) {
+export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, dragRef, focusRef, navRef }) {
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return undefined;
@@ -164,7 +165,22 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
       /* focus transitions */
       const focus = focusRef.current;
       if (focus !== focusWas) {
-        if (focusWas >= 0 && units[focusWas]) units[focusWas].returnUntil = t + P.returnTime;
+        const dir = navRef && navRef.current ? navRef.current.dir : 0;
+        const out = focusWas >= 0 ? units[focusWas] : null;
+        const inn = focus >= 0 ? units[focus] : null;
+        if (out) out.returnUntil = t + P.returnTime;
+        if (out && inn && dir !== 0) {
+          // carousel feel: the old hero is kicked out to one side (the return
+          // spring then brings it home), the new one starts just off the other
+          // side at hero size and glides in
+          out.vx = -dir * P.slideExit * W;
+          out.vy = 0;
+          const startX = dir > 0 ? W + halfArt(inn, HERO.scale) : -halfArt(inn, HERO.scale);
+          inn.x = startX - (inn.hx + inn.ox);
+          inn.y = HERO.y * H - (inn.hy + inn.oy);
+          inn.vx = 0; inn.vy = 0;
+          inn.s = HERO.scale;
+        }
         focusWas = focus;
       }
 

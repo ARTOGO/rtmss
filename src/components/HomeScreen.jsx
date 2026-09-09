@@ -8,7 +8,7 @@ import { LAYOUT } from "../data/tours.js";
 /* The home layer is always mounted. `focus` ≥ 0 means a tour is open:
    that unit swims to the hero spot (physics), the others fade out and
    stop reacting to touch. */
-export default function HomeScreen({ tours, focus, onOpen }) {
+export default function HomeScreen({ tours, focus, onOpen, navRef }) {
   const fieldRef = useRef(null);
   const unitRefs = useRef([]);
   const tapSignal = useRef({ index: -1, t: 0 });
@@ -17,7 +17,7 @@ export default function HomeScreen({ tours, focus, onOpen }) {
   focusRef.current = focus;
   const artSrc = useRippleBitmap();
 
-  useUnitPhysics({ stageRef: fieldRef, unitRefs, layout: LAYOUT, tapSignal, dragRef, focusRef });
+  useUnitPhysics({ stageRef: fieldRef, unitRefs, layout: LAYOUT, tapSignal, dragRef, focusRef, navRef });
 
   /* centre of unit i in viewport px (follows the physics transform) */
   const unitCenter = (i) => {
