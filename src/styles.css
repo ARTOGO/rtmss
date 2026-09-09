@@ -16,8 +16,11 @@
   --sans:-apple-system, BlinkMacSystemFont, "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
   --serif:"Noto Serif TC", "Songti TC", "Source Han Serif TC", "PMingLiU", Georgia, serif;
 
-  --sheet-h: 46vh;          /* collapsed */
-  --sheet-h-expanded: 88vh; /* pulled up: full transcript */
+  /* heights are % of the stage (the real visible area: on iPad Safari 100vh
+     includes the space behind the toolbars) and always leave the top bar free */
+  --topbar-h: calc(3.2vh + 6vh + env(safe-area-inset-top, 0px));
+  --sheet-h: 46%;                                          /* collapsed */
+  --sheet-h-expanded: calc(100% - var(--topbar-h) - 2vh); /* pulled up: full transcript */
   --ease-out: cubic-bezier(.2,.8,.2,1);
 }
 
@@ -85,7 +88,7 @@ button{ font-family:inherit; }
    ============================================================ */
 #home-screen .home-header{
   position:absolute; top:0; left:0; right:0;
-  padding: 3.2vh 6vmin 0 6vmin;
+  padding: calc(3.2vh + env(safe-area-inset-top, 0px)) 6vmin 0 6vmin;
   z-index:5;
   transition:opacity .5s ease;
 }
@@ -104,7 +107,7 @@ button{ font-family:inherit; }
 }
 .home-caption{
   position:absolute;
-  left:0; right:0; bottom:3.6%;
+  left:0; right:0; bottom:calc(3.6% + env(safe-area-inset-bottom, 0px));
   text-align:center;
   font-size:1.75vh;
   font-weight:700;
@@ -272,7 +275,9 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
 .detail-topbar{
   position:absolute; top:0; left:0; right:0;
   display:flex; justify-content:space-between; align-items:center;
-  padding:3.2vh 5vmin;
+  padding:calc(3.2vh + env(safe-area-inset-top, 0px)) 5vmin 0 5vmin;
+  height:var(--topbar-h);
+  box-sizing:border-box;
   z-index:8;
   opacity:0; pointer-events:none;
   transition:opacity .45s ease .15s;
@@ -349,7 +354,7 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
   position:relative;
   height:100%;
   display:flex; flex-direction:column;
-  padding:4.2vh 7vmin 1.6vh 7vmin;
+  padding:4.2vh 7vmin calc(1.6vh + env(safe-area-inset-bottom, 0px)) 7vmin;
   color:#fbf6ec;
 }
 
