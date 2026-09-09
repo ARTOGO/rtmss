@@ -80,9 +80,25 @@ export default function HomeScreen({ tours, focus, onOpen, navRef }) {
 
   const focused = focus >= 0;
 
+  /* long-press (1.5 s) on the title opens the install / status card —
+     the only way to reach it from the installed home-screen app */
+  const pressTimer = useRef(0);
+  const startPress = () => {
+    clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => window.dispatchEvent(new Event("rtmss:open-guide")), 1500);
+  };
+  const cancelPress = () => clearTimeout(pressTimer.current);
+
   return (
     <section id="home-screen" className={`screen active${focused ? " focused" : ""}`}>
-      <header className="home-header">
+      <header
+        className="home-header"
+        onPointerDown={startPress}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
+        onPointerLeave={cancelPress}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <div className="zh">時光渡口・記憶漣漪</div>
         <div className="en">Reawakening the Time and Memories of Shisizhang through Sound</div>
       </header>

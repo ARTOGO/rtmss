@@ -34,7 +34,7 @@ const P = {
   damping: 2.6,        // velocity damping (1/s)
   wanderAmp: [0.045, 0.07],  // wander radius, fraction of the viewport's short side
   wanderPeriod: [13, 24],    // seconds
-  scaleRange: [0.5, 1.0],    // every unit breathes across this same range
+  scaleRange: [0.6, 1.2],    // every unit breathes across this same range
   breathPeriod: [10, 20],    // seconds (main breath)
   breathPeriod2: [23, 41],   // seconds (slow secondary swell)
   scaleLag: 1.0,       // how fast actual scale follows its target (1/s)

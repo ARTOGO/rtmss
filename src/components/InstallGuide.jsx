@@ -32,6 +32,13 @@ function AddIcon() {
     </svg>
   );
 }
+function MoreIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 10l6 6 6-6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -84,6 +91,13 @@ export default function InstallGuide({ hidden }) {
     return () => { mq && mq.removeEventListener && mq.removeEventListener("change", onChange); };
   }, []);
 
+  /* staff shortcut from the installed app: long-press the home title */
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("rtmss:open-guide", onOpen);
+    return () => window.removeEventListener("rtmss:open-guide", onOpen);
+  }, []);
+
   const dismiss = () => {
     setOpen(false);
     try { sessionStorage.setItem("rtmss-guide-seen", "1"); } catch (_) { /* ignore */ }
@@ -103,7 +117,7 @@ export default function InstallGuide({ hidden }) {
     <>
       <button
         type="button"
-        className={`info-btn${hidden ? " hidden" : ""}`}
+        className={`info-btn${hidden || standalone ? " hidden" : ""}`}
         aria-label="安裝與離線狀態說明"
         onClick={() => setOpen(true)}
       >
@@ -149,7 +163,7 @@ export default function InstallGuide({ hidden }) {
                   </li>
                   <li>
                     <span className="n">3</span>
-                    <div><strong>選「加入主畫面」<i className="ico"><AddIcon /></i>，再點右上「新增」</strong><small>清單裡找不到時往下捲。</small></div>
+                    <div><strong>在分享面板點「檢視較多」<i className="ico"><MoreIcon /></i>，選「加入主畫面」<i className="ico"><AddIcon /></i>，再點右上「新增」</strong><small>「加入主畫面」在展開後的清單裡，找不到時往下捲。</small></div>
                   </li>
                   <li>
                     <span className="n">4</span>
@@ -160,6 +174,7 @@ export default function InstallGuide({ hidden }) {
 
               {standalone && (
                 <p className="guide-note">
+                  <strong>長按首頁左上的標題 1.5 秒</strong>可隨時開啟這張狀態卡。<br />
                   展場建議：設定 → 螢幕顯示與亮度 → 自動鎖定「永不」；設定 → 輔助使用 → 引導使用模式，
                   在 App 內連按三下頂端按鈕即可鎖定畫面。
                 </p>

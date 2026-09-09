@@ -90,10 +90,12 @@ button{ font-family:inherit; }
    HOME
    ============================================================ */
 #home-screen .home-header{
-  position:absolute; top:0; left:0; right:0;
-  padding: calc(3.2vh + env(safe-area-inset-top, 0px)) 6vmin 0 6vmin;
+  position:absolute; top:0; left:0; right:auto;
+  padding: calc(3.2vh + env(safe-area-inset-top, 0px)) 6vmin 1vh 6vmin;
   z-index:5;
   transition:opacity .5s ease;
+  touch-action:none;             /* long-press target for the staff status card */
+  -webkit-touch-callout:none;
 }
 /* title scale: short side + a share of the width, so landscape screens
    (where vh is small) still get a readable header */
