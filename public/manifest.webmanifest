@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "渡口回聲｜時光渡口・記憶漣漪",
+  "short_name": "渡口回聲",
+  "description": "十四張渡口回聲公共藝術 語音導覽（離線版）",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c6c6c",
+  "theme_color": "#0c6c6c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
