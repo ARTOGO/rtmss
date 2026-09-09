@@ -92,8 +92,10 @@ button{ font-family:inherit; }
   z-index:5;
   transition:opacity .5s ease;
 }
+/* title scale: short side + a share of the width, so landscape screens
+   (where vh is small) still get a readable header */
 #home-screen .home-header .zh{
-  font-size: 1.55vh;
+  font-size: clamp(15px, calc(1.4vmin + .7vw), 32px);
   font-weight:700;
   letter-spacing:.12em;
   color:#f4efe1;
@@ -101,7 +103,7 @@ button{ font-family:inherit; }
 }
 #home-screen .home-header .en{
   margin-top:.35vh;
-  font-size:1vh;
+  font-size: clamp(10px, calc(.85vmin + .45vw), 20px);
   letter-spacing:.06em;
   color:rgba(244,239,225,.75);
 }
@@ -109,7 +111,7 @@ button{ font-family:inherit; }
   position:absolute;
   left:0; right:0; bottom:calc(3.6% + env(safe-area-inset-bottom, 0px));
   text-align:center;
-  font-size:1.75vh;
+  font-size: clamp(15px, calc(1.5vmin + .6vw), 30px);
   font-weight:700;
   letter-spacing:.14em;
   color:#fbf6ec;
