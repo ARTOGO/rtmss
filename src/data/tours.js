@@ -1,59 +1,107 @@
 /* ============================================================
-   資料設定區 — 導覽內容
-   每一則：id、title（作品名）、audioSrc（音檔，放在 public/audio/）、
-   srt（字幕檔文字，放在 src/assets/subtitles/ 以 ?raw 匯入，建置時內嵌）。
-   沒有 srt 的作品可改給 transcript: ["段落…"]，面板會顯示文字但不同步。
+   導覽內容設定 — 更換正式素材時，這個檔案是唯一需要編輯的地方。
+   完整交接說明請看專案根目錄的 CONTENT-UPDATE.md。
 
-   01~10 對應「聲音文字素材」資料夾的十組 mp3 + srt（1-1 … 2-5）。
+   檔案對應規則（依編號自動對應，不需要手動寫路徑）：
+     第 1 件 → public/audio/track01.mp3  ＋ src/assets/subtitles/track01.srt
+     第 2 件 → public/audio/track02.mp3  ＋ src/assets/subtitles/track02.srt
+     …以此類推，編號永遠是兩位數。
+
+   只要把檔案放進那兩個資料夾、並把作品名依相同順序填進下面的 WORKS，
+   首頁的水波紋數量、內頁的標題與字幕就會全部跟著改變。
    ============================================================ */
-import srt01 from "../assets/subtitles/track01.srt?raw";
-import srt02 from "../assets/subtitles/track02.srt?raw";
-import srt03 from "../assets/subtitles/track03.srt?raw";
-import srt04 from "../assets/subtitles/track04.srt?raw";
-import srt05 from "../assets/subtitles/track05.srt?raw";
-import srt06 from "../assets/subtitles/track06.srt?raw";
-import srt07 from "../assets/subtitles/track07.srt?raw";
-import srt08 from "../assets/subtitles/track08.srt?raw";
-import srt09 from "../assets/subtitles/track09.srt?raw";
-import srt10 from "../assets/subtitles/track10.srt?raw";
 
-export const TOURS = [
-  { id: 1,  title: "變奏山水",             audioSrc: "audio/track01.mp3", srt: srt01 },
-  { id: 2,  title: "意象",                 audioSrc: "audio/track02.mp3", srt: srt02 },
-  { id: 3,  title: "悠閒．茶盤茶具組",     audioSrc: "audio/track03.mp3", srt: srt03 },
-  { id: 4,  title: "誰來唱我們的歌",       audioSrc: "audio/track04.mp3", srt: srt04 },
-  { id: 5,  title: "夏雪",                 audioSrc: "audio/track05.mp3", srt: srt05 },
-  { id: 6,  title: "以植代塑",             audioSrc: "audio/track06.mp3", srt: srt06 },
-  { id: 7,  title: "點廢成金",             audioSrc: "audio/track07.mp3", srt: srt07 },
-  { id: 8,  title: "方寸循環",             audioSrc: "audio/track08.mp3", srt: srt08 },
-  { id: 9,  title: "神來之筆",             audioSrc: "audio/track09.mp3", srt: srt09 },
-  { id: 10, title: "城市礦產的無毒工藝再生", audioSrc: "audio/track10.mp3", srt: srt10 }
+/* ---- 作品清單：順序＝首頁編號順序（第一個就是 01） ----
+   每一項通常只要寫作品名字串即可。
+   音檔不是 mp3 時，改寫成物件指定檔名：{ title: "作品名", audio: "track01.m4a" } */
+/* WORKS:START — 可手動編輯，也可由 `npm run import-content` 自動產生 */
+export const WORKS = [
+  "變奏山水",
+  "意象",
+  "悠閒．茶盤茶具組",
+  "誰來唱我們的歌",
+  "夏雪",
+  "以植代塑",
+  "點廢成金",
+  "方寸循環",
+  "神來之筆",
+  "城市礦產的無毒工藝再生"
 ];
+/* WORKS:END */
+
+/* ---- 以下為自動組裝，正常情況不需要修改 ---------------- */
+
+/* 所有字幕檔一次讀進來（建置時內嵌進 index.html，離線可用）。
+   新增 srt 檔不需要加 import，放進資料夾即可被抓到。 */
+const SUBTITLES = import.meta.glob("../assets/subtitles/*.srt", {
+  eager: true,
+  query: "?raw",
+  import: "default"
+});
+
+const pad = (n) => String(n).padStart(2, "0");
+const srtFor = (nn) => SUBTITLES[`../assets/subtitles/track${nn}.srt`] ?? null;
+
+export const TOURS = WORKS.map((w, i) => {
+  const id = i + 1;
+  const nn = pad(id);
+  const title = typeof w === "string" ? w : w.title;
+  const audio = typeof w === "string" ? null : w.audio;
+  return {
+    id,
+    title,
+    audioSrc: `audio/${audio || `track${nn}.mp3`}`,
+    srt: srtFor(nn)          // 沒有對應 srt 時為 null：仍可播放，只是沒有字幕
+  };
+});
 
 /* ============================================================
-   版面位置設定 — 10 個水波紋的中心座標 (cx / cy，整個視窗的百分比)，順序對應 TOURS。
-   size 是「呼吸到最大 (1.0) 時」的直徑，相對視窗短邊 (vmin) 的百分比；
-   所有單元統一使用 UNIT_SIZE，實際大小由物理模擬在 0.6~1.2 倍之間呼吸。
+   版面位置 — 每件作品水波紋的中心座標（cx / cy，整個視窗的百分比）。
+   順序對應 WORKS。作品數量多於下面的座標時，會自動補上分散的位置，
+   所以新增作品不會壞掉；想要精準構圖時再手動補座標即可。
 
-   物理模擬會確保每顆「整張水波紋圖」都留在畫面內：太靠邊的座標會被自動內縮，
-   飄動、推擠、拖曳也都不會超出邊界。
+   size 是「呼吸到最大時」的直徑（相對視窗短邊的百分比），統一使用 UNIT_SIZE，
+   實際大小由物理模擬在 0.6~1.2 倍之間呼吸。物理模擬會把每顆整張水波紋圖
+   保持在畫面內（標題下緣到底部說明文字上緣之間），所以座標不必算得很精準。
    ============================================================ */
 export const UNIT_SIZE = 26;
 
-export const LAYOUT = [
-  { cx: 48.0, cy: 64.0, size: UNIT_SIZE }, // 01
-  { cx: 74.0, cy: 18.0, size: UNIT_SIZE }, // 02
-  { cx: 78.0, cy: 45.0, size: UNIT_SIZE }, // 03
-  { cx: 76.0, cy: 84.0, size: UNIT_SIZE }, // 04
-  { cx: 50.0, cy: 37.0, size: UNIT_SIZE }, // 05
-  { cx: 79.0, cy: 66.0, size: UNIT_SIZE }, // 06
-  { cx: 23.0, cy: 27.0, size: UNIT_SIZE }, // 07
-  { cx: 22.0, cy: 52.0, size: UNIT_SIZE }, // 08
-  { cx: 55.0, cy: 85.0, size: UNIT_SIZE }, // 09
-  { cx: 26.0, cy: 80.0, size: UNIT_SIZE }  // 10
+export const BASE_LAYOUT = [
+  { cx: 48.0, cy: 64.0 }, // 01
+  { cx: 74.0, cy: 18.0 }, // 02
+  { cx: 78.0, cy: 45.0 }, // 03
+  { cx: 76.0, cy: 84.0 }, // 04
+  { cx: 50.0, cy: 37.0 }, // 05
+  { cx: 79.0, cy: 66.0 }, // 06
+  { cx: 23.0, cy: 27.0 }, // 07
+  { cx: 22.0, cy: 52.0 }, // 08
+  { cx: 55.0, cy: 85.0 }, // 09
+  { cx: 26.0, cy: 80.0 }  // 10
 ];
 
-/* the focused unit floats centred in the space above the collapsed sheet
-   (sheetFrac of the height); `scale` is the maximum: short landscape
-   viewports scale it down automatically so the artwork is never clipped */
+/* 超出 BASE_LAYOUT 的作品：用黃金角散佈在安全範圍內，物理模擬會再把它們推開 */
+function scatter(i) {
+  const g = 0.6180339887498949;
+  return {
+    cx: +(14 + ((i * g * 100) % 72)).toFixed(1),
+    cy: +(18 + (((i * g * 2 + 0.37) * 100) % 66)).toFixed(1)
+  };
+}
+
+export const LAYOUT = TOURS.map((_, i) => {
+  const p = BASE_LAYOUT[i] || scatter(i);
+  return { cx: p.cx, cy: p.cy, size: UNIT_SIZE };
+});
+
+/* 開發模式下提醒缺漏的素材（正式版不會輸出） */
+if (import.meta.env.DEV) {
+  TOURS.forEach((t) => {
+    if (!t.srt) console.warn(`[內容檢查] 第 ${pad(t.id)} 件「${t.title}」找不到字幕檔 src/assets/subtitles/track${pad(t.id)}.srt`);
+  });
+  const extra = Object.keys(SUBTITLES).length - TOURS.length;
+  if (extra > 0) console.warn(`[內容檢查] subtitles 資料夾多出 ${extra} 個 srt 檔，超過 WORKS 的作品數，這些不會被使用`);
+}
+
+/* 內頁開啟時，被點的那顆水波紋停在面板上方的哪裡（sheetFrac 是面板佔的高度比例）；
+   scale 是最大倍率，橫式等較矮的畫面會自動縮小以免被裁切 */
 export const HERO = { x: 0.5, sheetFrac: 0.41, scale: 1.55 };

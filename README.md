@@ -5,6 +5,27 @@
 
 線上版：https://artogo.github.io/rtmss/
 
+---
+
+### 📄 要更新語音導覽內容的人，先看這兩份
+
+| 文件 | 給誰 | 內容 |
+|---|---|---|
+| **[CONTENT-UPDATE.md](CONTENT-UPDATE.md)** | 工程師 / 下一個 AI | 拿到音檔、標題、逐字稿後，如何換進專案並上線（含一鍵匯入腳本） |
+| **[ASSET-DELIVERY.md](ASSET-DELIVERY.md)** | 企劃 / 內容提供單位 | 素材的資料夾結構、檔名規則、音檔與 SRT 規格、交付前檢查清單 |
+
+最短路徑：
+
+```bash
+npm install
+npm run import-content -- "素材資料夾路徑" --dry   # 先試算確認對照表
+npm run import-content -- "素材資料夾路徑"         # 正式匯入
+npm run dev                                        # 本機檢查
+git add -A && git commit -m "Update guide content" && git push
+```
+
+---
+
 ## 使用流程
 
 1. **首頁**：滿版水面上漂著 10 個作品水波紋，各自呼吸、互相推擠、可拖曳換位置；
@@ -40,26 +61,34 @@
 ## 檔案結構
 
 ```
-index.html                     ← Vite 入口（meta / title）
+CONTENT-UPDATE.md              ← ★ 內容更新交接文件（給工程師 / 下一個 AI）
+ASSET-DELIVERY.md              ← ★ 素材交付規格（給企劃 / 內容提供單位）
+index.html                       Vite 入口（meta / title）
+vite.config.js                   建置設定 ＋ 離線 service worker 產生器（sw.js）
+scripts/import-content.mjs       一鍵匯入整包素材（npm run import-content）
 src/
-  main.jsx                     ← React 掛載點
-  App.jsx                      ← 兩個畫面的切換狀態
-  styles.css                   ← 全站樣式（色票變數、漸層、水波紋、播放器）
-  data/tours.js                ← ★ 導覽內容 (TOURS：作品名 / 音檔 / srt)、水波紋座標 (LAYOUT)、主角位置 (HERO)
+  main.jsx                       React 掛載點、service worker 註冊、視窗尺寸校正
+  App.jsx                        首頁與內頁的切換狀態、上一件／下一件
+  styles.css                     全站樣式（色票變數、漸層、水波紋、面板、狀態卡）
+  data/tours.js                ← ★ 導覽內容（WORKS 作品清單）、座標 (BASE_LAYOUT)、主角位置 (HERO)
   components/
-    Backdrop.jsx               ← 背景層（水面 canvas + 暗角）
-    WaterBackdrop.jsx          ← WebGL 水面 shader：漸層 + 水光 + 漣漪扭曲 + 指尖觸發
-    RippleArt.jsx              ← 官方水波紋原稿 (assets/ripple.svg) 嵌成 <symbol>
-    RippleUnit.jsx             ← 首頁單一水波紋單元：原稿 <use> + 飄動 + 脈動 + 按鈕 + 標籤
-    HomeScreen.jsx             ← 首頁：標題、10 個水波紋單元、掛上物理模擬
-  hooks/useUnitPhysics.js      ← 單元物理：漂移追蹤、呼吸、互斥、漣漪推力（參數在檔頭 P）
-  lib/ripples.js               ← 背景與單元共用的漣漪清單與波形公式（參數在 RIPPLE）
-  assets/ripple.svg            ← 展覽KV_ol_F_水波紋_彩色.svg 原檔（勿改，換檔即換圖）
-    DetailSheet.jsx            ← 內頁玻璃面板：標題、同步字幕、進度、±15 秒、播放、展開逐字稿
-  lib/srt.js                   ← SRT 解析與「目前句子」查找
-audio/
-  track01.mp3 … track10.mp3    ← 正式語音檔放這裡（目前尚未放入）
-.github/workflows/deploy.yml   ← 自動建置部署到 GitHub Pages
+    Backdrop.jsx                 背景層（水面 canvas ＋ 暗角）
+    WaterBackdrop.jsx            WebGL 水面：漸層 ＋ 水光 ＋ KV 形狀漣漪扭曲
+    RippleArt.jsx                官方水波紋原稿嵌成 <symbol>，並轉成共用點陣圖
+    RippleUnit.jsx               單一水波紋：圖、可點核心、標籤、發光內圈
+    HomeScreen.jsx               首頁：標題、水波紋單元、漣漪來源、長按開狀態卡
+    DetailSheet.jsx              內頁玻璃面板：標題、同步字幕、進度、±15 秒、上下一件、逐字稿
+    InstallGuide.jsx             安裝說明與離線狀態卡（展場人員用）
+  hooks/useUnitPhysics.js        水波紋物理：漂移、呼吸、互斥、拖曳、主角游動、隱形邊框
+  lib/ripples.js                 背景與單元共用的漣漪清單與波形公式
+  lib/srt.js                     SRT 解析與「目前句子」查找
+  assets/ripple.svg              展覽KV_ol_F_水波紋_彩色.svg 原檔（勿改，換檔即換圖）
+  assets/subtitles/trackNN.srt ← ★ 字幕檔（建置時內嵌，離線可用）
+public/
+  audio/trackNN.mp3            ← ★ 語音檔（建置時原樣複製到 dist/audio/）
+  manifest.webmanifest           PWA 資訊（名稱、圖示、全螢幕、直式）
+  icon-*.png                     主畫面圖示
+.github/workflows/deploy.yml     推 main 後自動建置並部署到 GitHub Pages
 ```
 
 ## 本地開發
@@ -99,20 +128,33 @@ HTTPS 網站根目錄（或子路徑，路徑皆為相對），流程相同。
 
 ## 如何替換成正式內容
 
-1. 音檔放到 `public/audio/trackNN.mp3`，字幕放到 `src/assets/subtitles/trackNN.srt`（標準 SRT，UTF-8）。
-2. 編輯 `src/data/tours.js`：
+完整說明見 **[CONTENT-UPDATE.md](CONTENT-UPDATE.md)**。摘要：
+
+內容由「編號」綁定，編號就是首頁水波紋上的 01、02、03…
+
+| 內容 | 位置 | 檔名 |
+|---|---|---|
+| 音檔 | `public/audio/` | `track01.mp3`、`track02.mp3`…（兩位數連號） |
+| 逐字稿 | `src/assets/subtitles/` | `track01.srt`、`track02.srt`…（UTF-8 標準 SRT） |
+| 作品標題 | `src/data/tours.js` 的 `WORKS` | 依相同順序排列 |
 
 ```js
-import srt06 from "../assets/subtitles/track06.srt?raw";
-// ...
-{ id: 6, title: "作品名", audioSrc: "audio/track06.mp3", srt: srt06 }
+export const WORKS = [
+  "變奏山水",              // → 01，用 track01.mp3 + track01.srt
+  "意象",                  // → 02
+  // …直接增減行數就能增減作品
+];
 ```
 
-沒有 srt 的作品可以先給 `transcript: ["段落…"]`，面板會顯示文字但不會隨播放同步。
-音檔缺漏時面板會顯示「此件作品的語音尚未提供，可先閱讀文字。」
+字幕檔會自動被讀取，**不需要新增 import**。作品數量不限於 10 件，超過時版面會自動補位。
+音檔不是 mp3 時改寫成 `{ title: "作品名", audio: "track01.m4a" }`。
+沒有對應 srt 的作品仍可播放，只是不顯示字幕（開發模式會在主控台提醒）。
 
-目前 01~10 已對應「聲音文字素材」資料夾的十組素材：變奏山水、意象、悠閒．茶盤茶具組、
-誰來唱我們的歌、夏雪、以植代塑、點廢成金、方寸循環、神來之筆、城市礦產的無毒工藝再生。
+整包素材可用腳本一次匯入：`npm run import-content -- "素材資料夾路徑"`
+（先加 `--dry` 試算，`--clean` 可清掉上一批多餘的檔案。）
+
+目前 01~10 對應：變奏山水、意象、悠閒．茶盤茶具組、誰來唱我們的歌、夏雪、
+以植代塑、點廢成金、方寸循環、神來之筆、城市礦產的無毒工藝再生。
 
 ## 如何調整水波紋位置／大小
 
@@ -123,7 +165,10 @@ import srt06 from "../assets/subtitles/track06.srt?raw";
 ```
 
 - `cx` / `cy`：水波紋中心點（整個視窗的百分比 0~100，畫面是滿版的）
-- `size`：呼吸到最大時的直徑（相對視窗短邊的百分比，即 vmin），預設全部等於 `UNIT_SIZE`（26）
+- `size`：呼吸到最大時的直徑（相對視窗短邊的百分比，即 vmin），統一由 `UNIT_SIZE` 決定（26）
+
+實際要編輯的是 `BASE_LAYOUT`（只有 `cx` / `cy`）。作品數超過 `BASE_LAYOUT` 的項數時，
+多出來的會自動取得分散的位置，不會壞掉；想精準構圖時再補座標即可。
 
 ## 如何調整視覺細節
 
