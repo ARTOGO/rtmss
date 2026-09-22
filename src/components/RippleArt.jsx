@@ -24,6 +24,59 @@ export const RING2_D = "M409.13,581.65c2.68,14.86,7.86,26.48,15.72,34.34s19.49,1
 export const RING3_D = "M383.18,595.86c3.33,18.41,9.75,32.82,19.49,42.56s24.15,16.11,42.56,19.48c18,3.3,42,5.13,72.3,5.13s54.31-1.74,72.81-5.13c17.91-3.27,32.31-9.74,42-19.48s16.66-24.06,20-42.56S657,552.79,657,522c0-30.25-1.29-54.91-4.61-73.33s-10.26-32.81-20-42.56-24-16.69-42-20c-18.41-3.38-42.56-4.62-72.81-4.62s-54.39,1.34-72.3,4.62c-18.5,3.38-32.82,10.25-42.56,20s-16.16,24.15-19.49,42.56-5.12,43.08-5.12,73.33C378.06,552.79,379.84,577.35,383.18,595.86Z";
 
 /* ------------------------------------------------------------------
+   iOS Safari drops CSS <style> rules when an SVG is loaded via a data URL
+   and rasterised to canvas — strokes vanish and paths render as black
+   fills. Expand class rules into presentation attributes before encoding.
+   ------------------------------------------------------------------ */
+function inlineSvgPresentation(svgText) {
+  const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+  if (doc.querySelector("parsererror")) return svgText;
+  const styleEl = doc.querySelector("style");
+  const rules = Object.create(null);
+  if (styleEl) {
+    const re = /\.([A-Za-z0-9_-]+)\s*\{([^}]*)\}/g;
+    let m;
+    while ((m = re.exec(styleEl.textContent || ""))) {
+      const props = Object.create(null);
+      for (const part of m[2].split(";")) {
+        const i = part.indexOf(":");
+        if (i < 0) continue;
+        const k = part.slice(0, i).trim();
+        const v = part.slice(i + 1).trim();
+        if (k && v) props[k] = v;
+      }
+      rules[m[1]] = props;
+    }
+  }
+  const PRESENTATION = new Set([
+    "fill", "stroke", "opacity",
+    "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit",
+    "stroke-dasharray", "stroke-dashoffset", "fill-opacity", "stroke-opacity",
+  ]);
+  for (const el of doc.querySelectorAll("[class]")) {
+    const merged = Object.create(null);
+    for (const c of el.getAttribute("class").split(/\s+/)) {
+      const props = rules[c];
+      if (props) Object.assign(merged, props);
+    }
+    for (const [k, v] of Object.entries(merged)) {
+      if (!PRESENTATION.has(k)) continue;
+      // stroke-width "2px" → "2" (SVG presentation attrs prefer unitless)
+      el.setAttribute(k, k === "stroke-width" ? v.replace(/px$/i, "") : v);
+    }
+  }
+  // Paths that only had stroke via CSS need an explicit fill:none so iOS
+  // does not paint them black when the stylesheet is ignored.
+  for (const el of doc.querySelectorAll("path, circle, ellipse, line, polyline, polygon")) {
+    if (!el.hasAttribute("fill") && el.hasAttribute("stroke")) el.setAttribute("fill", "none");
+  }
+  if (styleEl) styleEl.remove();
+  const root = doc.documentElement;
+  if (!root.getAttribute("xmlns")) root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  return new XMLSerializer().serializeToString(doc);
+}
+
+/* ------------------------------------------------------------------
    useRippleBitmap — rasterise the artwork ONCE into a PNG (blob URL) that
    every unit displays with <img>. The units scale every frame; scaling a
    bitmap is a GPU texture operation, whereas scaling 93 vector paths
@@ -39,7 +92,8 @@ export function useRippleBitmap() {
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     // largest on-screen size is about 0.416 x short side x hero scale 1.55
     const px = Math.max(700, Math.min(1600, Math.round(short * 0.416 * 1.55 * dpr)));
-    const svgText = rippleSvg.replace("<svg ", `<svg width="${ART_W}" height="${ART_H}" `);
+    let svgText = rippleSvg.replace("<svg ", `<svg width="${ART_W}" height="${ART_H}" `);
+    svgText = inlineSvgPresentation(svgText);
     const img = new Image();
     img.onload = () => {
       if (cancelled) return;
