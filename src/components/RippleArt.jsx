@@ -28,24 +28,38 @@ export const RING3_D = "M383.18,595.86c3.33,18.41,9.75,32.82,19.49,42.56s24.15,1
    and rasterised to canvas — strokes vanish and paths render as black
    fills. Expand class rules into presentation attributes before encoding.
    ------------------------------------------------------------------ */
+function parseCssDecl(block) {
+  const props = Object.create(null);
+  for (const part of block.split(";")) {
+    const i = part.indexOf(":");
+    if (i < 0) continue;
+    const k = part.slice(0, i).trim();
+    const v = part.slice(i + 1).trim();
+    if (k && v) props[k] = v;
+  }
+  return props;
+}
+
 function inlineSvgPresentation(svgText) {
   const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
   if (doc.querySelector("parsererror")) return svgText;
   const styleEl = doc.querySelector("style");
   const rules = Object.create(null);
   if (styleEl) {
-    const re = /\.([A-Za-z0-9_-]+)\s*\{([^}]*)\}/g;
+    // KV CSS uses grouped selectors (`.cls-2,.cls-4,.cls-6{fill:none;stroke:#…}`).
+    // Match each `{…}` block, then fan the declarations out to every `.class` in
+    // the selector list — otherwise fill:none / stroke colours are dropped and
+    // paths paint as solid black blobs on iOS (and after data-URL raster).
+    const re = /([^{}]+)\{([^}]*)\}/g;
     let m;
     while ((m = re.exec(styleEl.textContent || ""))) {
-      const props = Object.create(null);
-      for (const part of m[2].split(";")) {
-        const i = part.indexOf(":");
-        if (i < 0) continue;
-        const k = part.slice(0, i).trim();
-        const v = part.slice(i + 1).trim();
-        if (k && v) props[k] = v;
+      const props = parseCssDecl(m[2]);
+      if (!Object.keys(props).length) continue;
+      for (const sel of m[1].split(",")) {
+        const cm = sel.trim().match(/^\.([A-Za-z0-9_-]+)$/);
+        if (!cm) continue;
+        rules[cm[1]] = Object.assign(rules[cm[1]] || Object.create(null), props);
       }
-      rules[m[1]] = props;
     }
   }
   const PRESENTATION = new Set([
@@ -65,10 +79,10 @@ function inlineSvgPresentation(svgText) {
       el.setAttribute(k, k === "stroke-width" ? v.replace(/px$/i, "") : v);
     }
   }
-  // Paths that only had stroke via CSS need an explicit fill:none so iOS
-  // does not paint them black when the stylesheet is ignored.
+  // This artwork is stroke-only. Default SVG fill is black — force none on
+  // every path so a missed class can never paint a solid blob again.
   for (const el of doc.querySelectorAll("path, circle, ellipse, line, polyline, polygon")) {
-    if (!el.hasAttribute("fill") && el.hasAttribute("stroke")) el.setAttribute("fill", "none");
+    if (!el.hasAttribute("fill")) el.setAttribute("fill", "none");
   }
   if (styleEl) styleEl.remove();
   const root = doc.documentElement;
