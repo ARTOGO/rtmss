@@ -150,15 +150,17 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     function apply() {
       for (let i = 0; i < n; i++) {
         const el = unitRefs.current[i];
-        if (!el) continue;
+        if (!el || u_frozen(i)) continue;
         const u = units[i];
         // transform is relative to the DOM anchor: include the home shift (hx - ax)
-        el.style.transform =
-          `translate(-50%,-50%) translate3d(${(u.hx - u.ax + u.ox + u.x).toFixed(2)}px, ${(u.hy - u.ay + u.oy + u.y).toFixed(2)}px, 0) scale(${u.s.toFixed(4)})`;
-        if (!u.label) u.label = el.querySelector(".label");
-        if (u.label) {
-          const ls = Math.pow(u.s, -P.labelCounter);
-          u.label.style.transform = `translate(-50%,-50%) scale(${ls.toFixed(4)})`;
+        const tf = `translate(-50%,-50%) translate3d(${(u.hx - u.ax + u.ox + u.x).toFixed(2)}px, ${(u.hy - u.ay + u.oy + u.y).toFixed(2)}px, 0) scale(${u.s.toFixed(4)})`;
+        if (tf !== u.tf) { u.tf = tf; el.style.transform = tf; }   // skip identical writes
+        if (P.labelCounter) {
+          if (!u.label) u.label = el.querySelector(".label");
+          if (u.label) {
+            const ls = Math.pow(u.s, -P.labelCounter);
+            u.label.style.transform = `translate(-50%,-50%) scale(${ls.toFixed(4)})`;
+          }
         }
       }
     }
@@ -173,6 +175,12 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
       u.x = 0; u.y = 0;                     // keep vx / vy → a little momentum after release
     }
 
+    /* while a tour is open the other units are invisible (opacity 0), so stop
+       simulating and stop writing their transforms: that also keeps the sheet's
+       backdrop blur from being recomputed every frame behind them */
+    let settleUntil = 0;
+    const u_frozen = (i) => focusRef.current >= 0 && i !== focusRef.current && performance.now() / 1000 > settleUntil;
+
     let lastTap = tapSignal.current;
     let dragWasActive = false, dragIndex = -1;
     let wakeX = 0, wakeY = 0;
@@ -183,6 +191,10 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
       if (!running) return;
       raf = requestAnimationFrame(step);
       const t = nowMs / 1000;
+      /* 30 fps is indistinguishable for motion this slow and halves the style
+         work; drags and the open/close swim still run at full rate */
+      const live = dragRef.current.active || t < settleUntil;
+      if (prev && !live && t - prev < 1 / 30) return;
       const dt = Math.min(0.05, prev ? t - prev : 0.016);
       prev = t;
 
@@ -195,6 +207,7 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
       /* focus transitions */
       const focus = focusRef.current;
       if (focus !== focusWas) {
+        settleUntil = t + P.returnTime;          // full rate while things swim in / out
         const dir = navRef && navRef.current ? navRef.current.dir : 0;
         const out = focusWas >= 0 ? units[focusWas] : null;
         const inn = focus >= 0 ? units[focus] : null;
@@ -233,6 +246,7 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
       const maxOff = P.maxOffsetFrac * S;
 
       for (let i = 0; i < n; i++) {
+        if (u_frozen(i)) continue;
         const u = units[i];
         const isDragged = dragging && i === dragIndex;
         const isFocus = i === focus;

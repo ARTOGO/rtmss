@@ -28,20 +28,35 @@ function fmt(sec) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-/* the focused unit's inner rings: brightness / width follow the audio level */
+/* The focused unit's inner rings brighten with the audio level.
+   OPACITY ONLY, and only when it actually changes: these paths carry a blur
+   filter, and touching stroke width or geometry would re-run that filter on
+   every frame (the main reason phones heated up while playing). */
+const glowNow = [-1, -1, -1];
 function lightHero(level) {
-  const r1 = document.querySelector(".is-focus .hero-ring-1");
-  if (!r1) return;
-  const r2 = document.querySelector(".is-focus .hero-ring-2");
-  const r3 = document.querySelector(".is-focus .hero-ring-3");
+  const rings = [
+    document.querySelector(".is-focus .hero-ring-1"),
+    document.querySelector(".is-focus .hero-ring-2"),
+    document.querySelector(".is-focus .hero-ring-3")
+  ];
+  if (!rings[0]) return;
   const l = Math.max(0, Math.min(1, level));
-  r1.style.opacity = (0.6 + l * 0.4).toFixed(3);
-  r1.style.strokeWidth = (6 + l * 6).toFixed(2);
-  const clamp = (v) => Math.max(0, Math.min(1, v)).toFixed(3);
-  if (r2) { r2.style.opacity = clamp((l - 0.2) / 0.5); r2.style.strokeWidth = (4 + l * 5).toFixed(2); }
-  if (r3) { r3.style.opacity = clamp((l - 0.55) / 0.45); r3.style.strokeWidth = (3 + l * 5).toFixed(2); }
+  const want = [
+    0.6 + l * 0.4,
+    Math.max(0, Math.min(1, (l - 0.2) / 0.5)),
+    Math.max(0, Math.min(1, (l - 0.55) / 0.45))
+  ];
+  for (let i = 0; i < 3; i++) {
+    const el = rings[i];
+    if (!el) continue;
+    const q = Math.round(want[i] * 20) / 20;      // quantise: at most 21 distinct values
+    if (q === glowNow[i]) continue;               // skip identical writes
+    glowNow[i] = q;
+    el.style.opacity = q.toFixed(2);
+  }
 }
 function resetHero() {
+  glowNow[0] = glowNow[1] = glowNow[2] = -1;
   document.querySelectorAll(".hero-ring").forEach((el) => { el.style.opacity = ""; el.style.strokeWidth = ""; });
 }
 
@@ -171,9 +186,12 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
     const g = graph.current;
     if (!g) { setMeterFallback(true); return undefined; }
 
-    let silent = 0, smooth = 0;
-    const loop = () => {
+    let silent = 0, smooth = 0, last = 0;
+    const GAP = 1000 / 20;              // 20 fps is plenty for a level meter
+    const loop = (now) => {
       meterRaf.current = requestAnimationFrame(loop);
+      if (now - last < GAP) return;
+      last = now;
       g.analyser.getByteFrequencyData(g.data);
       let total = 0;
       const bandLevel = BANDS.map(([lo, hi]) => {

@@ -143,11 +143,14 @@ export default function RippleDefs() {
     <svg className="ripple-defs" aria-hidden="true" focusable="false">
       <symbol id="kv-ripple" viewBox={ART_VIEWBOX} dangerouslySetInnerHTML={{ __html: html }} />
       {/* soft glow used by the focused unit's inner ring */}
-      <filter id="hero-glow" x="-60%" y="-60%" width="220%" height="220%" colorInterpolationFilters="sRGB">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b1" />
-        <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b2" />
+      {/* Kept deliberately cheap: one blur over a modest region. The rings it
+          is applied to must only ever change OPACITY at runtime — changing
+          stroke width or geometry re-runs the filter every frame, which is
+          what made phones hot while a track was playing. */}
+      <filter id="hero-glow" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b" />
         <feMerge>
-          <feMergeNode in="b1" /><feMergeNode in="b1" /><feMergeNode in="b2" /><feMergeNode in="SourceGraphic" />
+          <feMergeNode in="b" /><feMergeNode in="b" /><feMergeNode in="SourceGraphic" />
         </feMerge>
       </filter>
     </svg>

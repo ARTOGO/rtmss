@@ -195,26 +195,8 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
   animation:hero-in .6s ease forwards;
 }
 @keyframes hero-in{ to{ opacity:.95; } }
-/* rings 2 / 3: opacity + stroke width are written per frame by the audio meter */
+/* rings 2 / 3: only their opacity is written at runtime (see DetailSheet) */
 .unit-fx .hero-ring-2, .unit-fx .hero-ring-3{ stroke-width:5; animation:none; transition:opacity .12s linear; }
-
-/* outward-travelling pulse, same shape as the artwork's innermost ring */
-.unit-fx .pulse{
-  fill:none;
-  stroke:rgba(255,255,255,.85);
-  stroke-width:5;
-  vector-effect:non-scaling-stroke;
-  transform-box:fill-box;
-  transform-origin:50% 50%;
-  animation-name:pulse-out;
-  animation-timing-function:cubic-bezier(.15,.55,.4,1);
-  animation-iteration-count:infinite;
-}
-@keyframes pulse-out{
-  0%   { transform:scale(1);   opacity:.55; }
-  80%  { opacity:.06; }
-  100% { transform:scale(4.6); opacity:0; }
-}
 
 /* tappable / draggable core */
 .ripple-btn{
@@ -368,16 +350,17 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
 .sheet-glass::after{            /* slow travelling sheen: the "liquid" */
   content:"";
   position:absolute; top:-20%; bottom:-20%; width:45%;
-  left:-50%;
+  left:0;
   background:linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.16) 50%, rgba(255,255,255,0) 100%);
-  transform:skewX(-12deg);
+  transform:translateX(-160%) skewX(-12deg);
+  will-change:transform;
   animation:sheen 11s ease-in-out infinite;
 }
 @keyframes sheen{
-  0%,15%   { left:-55%; opacity:0; }
+  0%,15%   { transform:translateX(-160%) skewX(-12deg); opacity:0; }
   30%      { opacity:1; }
   70%      { opacity:1; }
-  85%,100% { left:115%; opacity:0; }
+  85%,100% { transform:translateX(320%) skewX(-12deg); opacity:0; }
 }
 
 .sheet-body{
@@ -708,7 +691,6 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
    reduced motion
    ============================================================ */
 @media (prefers-reduced-motion: reduce){
-  .unit-fx .pulse{ animation:none; opacity:0; }
   .sheet-glass::after{ animation:none; display:none; }
   .sheet-title h1.marquee{ animation:none; }
   .subtitle{ animation:none; }

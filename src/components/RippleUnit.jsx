@@ -22,7 +22,6 @@ import { ART_VIEWBOX, ART_W, ART_H, INNER_RING_D, RING2_D, RING3_D } from "./Rip
 
 export const ART_SCALE = 1.6;    // artwork width ÷ design size
 const HIT_FRAC = 0.8;            // tappable core diameter ÷ design size (units breathe down to 0.3×)
-const PULSE_COUNT = 2;
 const DRAG_THRESHOLD = 10;       // px
 
 const rnd = (i, n) => { const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -30,7 +29,6 @@ const rnd = (i, n) => { const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.545
 const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen, dragRef, focused, dimmed, artSrc }, ref) {
   const [sonars, setSonars] = useState([]);
   const press = useRef(null);
-  const pulsePeriod = (6.5 + rnd(index, 7) * 2.5).toFixed(2);
 
   const spawnSonar = () => setSonars((s) => [...s, Date.now() + Math.random()]);
   const removeSonar = (id) => setSonars((s) => s.filter((x) => x !== id));
@@ -101,7 +99,10 @@ const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen,
       ) : (
         <svg className="unit-art" viewBox={ART_VIEWBOX} aria-hidden="true"><use href="#kv-ripple" /></svg>
       )}
-      {/* light overlay: outward pulses + (only while focused) the glowing inner rings */}
+      {/* light overlay: the glowing inner rings, only while this unit is focused.
+          (The expanding pulses that used to live here scaled an SVG path every
+          frame on all ten units, which re-rasterised the artwork continuously —
+          removed for battery and heat.) */}
       <svg className="unit-fx" viewBox={ART_VIEWBOX} aria-hidden="true">
         {focused && (
           <>
@@ -110,17 +111,6 @@ const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen,
             <path className="hero-ring hero-ring-3" d={RING3_D} />
           </>
         )}
-        {Array.from({ length: PULSE_COUNT }, (_, p) => (
-          <path
-            key={p}
-            className="pulse"
-            d={INNER_RING_D}
-            style={{
-              animationDuration: `${pulsePeriod}s`,
-              animationDelay: `${(-(p * pulsePeriod) / PULSE_COUNT).toFixed(2)}s`
-            }}
-          />
-        ))}
       </svg>
 
       <button
