@@ -56,11 +56,27 @@ const SCOPE = self.registration.scope;
 const url = (p) => new URL(p, SCOPE).href;
 const INDEX = url("index.html");
 
+/* Download a few at a time. The audio is tens of MB in total, and firing every
+   request at once spikes memory and times out on exhibition wi-fi. */
+async function addAll(cache, list, limit) {
+  let i = 0, failed = 0;
+  const worker = async () => {
+    while (i < list.length) {
+      const p = list[i++];
+      // cache: "reload" bypasses the HTTP cache so a fresh build is really fetched
+      try { await cache.add(new Request(url(p), { cache: "reload" })); } catch (_) { failed++; }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit || 3, list.length) }, worker));
+  return failed;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // cache: "reload" bypasses the HTTP cache so a fresh build is really fetched
-    await Promise.all(ASSETS.map((p) => cache.add(new Request(url(p), { cache: "reload" }))));
+    // failures are tolerated: activate re-checks, the fetch handler heals, and the
+    // status card shows n/N so staff can see whether anything is still missing
+    await addAll(cache, ASSETS, 3);
     await self.skipWaiting();
   })());
 });
@@ -71,7 +87,7 @@ async function ensureAll() {
   const cache = await caches.open(CACHE);
   const have = new Set((await cache.keys()).map((r) => r.url));
   const missing = ASSETS.filter((p) => !have.has(url(p)));
-  await Promise.all(missing.map((p) => cache.add(new Request(url(p), { cache: "reload" })).catch(() => {})));
+  if (missing.length) await addAll(cache, missing, 3);
   return missing.length;
 }
 
@@ -87,12 +103,15 @@ self.addEventListener("activate", (event) => {
   })());
 });
 
-/* Safari asks for media with Range headers and expects 206 replies */
+/* Safari asks for media with Range headers and expects 206 replies.
+   Slice a Blob instead of reading the file into an ArrayBuffer: the tracks are
+   several MB each (one is ~18 MB) and Safari issues many range requests while
+   playing and seeking, so buffering each one would burn memory and CPU. */
 async function rangeResponse(request, full) {
   const range = request.headers.get("range");
   const m = /bytes=(\\d*)-(\\d*)/.exec(range || "");
-  const buf = await full.arrayBuffer();
-  const size = buf.byteLength;
+  const blob = await full.blob();
+  const size = blob.size;
   let start = m && m[1] !== "" ? parseInt(m[1], 10) : 0;
   let end = m && m[2] !== "" ? parseInt(m[2], 10) : size - 1;
   if (m && m[1] === "" && m[2] !== "") { start = Math.max(0, size - parseInt(m[2], 10)); end = size - 1; }
@@ -104,7 +123,7 @@ async function rangeResponse(request, full) {
   headers.set("Content-Range", "bytes " + start + "-" + end + "/" + size);
   headers.set("Content-Length", String(end - start + 1));
   headers.set("Accept-Ranges", "bytes");
-  return new Response(buf.slice(start, end + 1), { status: 206, statusText: "Partial Content", headers });
+  return new Response(blob.slice(start, end + 1), { status: 206, statusText: "Partial Content", headers });
 }
 
 self.addEventListener("fetch", (event) => {
