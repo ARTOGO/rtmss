@@ -5,6 +5,11 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
+/* the human-readable version shown on the status card; bump it in package.json
+   whenever new content or a fix ships, so the exhibition can confirm on-site
+   which build an iPad is running */
+const PKG = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
+
 /* ------------------------------------------------------------------
    Build output: a single self-contained dist/index.html (JS + CSS + SVG +
    SRT inlined) plus dist/audio/*.mp3, the web-app manifest, icons and a
@@ -172,6 +177,7 @@ self.addEventListener("message", (e) => {
 
 export default defineConfig({
   base: "./",
+  define: { __APP_VERSION__: JSON.stringify(PKG.version) },
   plugins: [react(), viteSingleFile(), offlineServiceWorker()],
   build: {
     target: "es2018",

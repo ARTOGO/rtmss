@@ -1,7 +1,7 @@
 {
   "name": "rtmss",
   "private": true,
-  "version": "0.2.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "十四張渡口洄聲 離線語音導覽 (iPad)",
   "scripts": {

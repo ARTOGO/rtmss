@@ -158,7 +158,7 @@ export default function InstallGuide({ hidden }) {
                 <ol className="guide-steps">
                   <li>
                     <span className="n">1</span>
-                    <div><strong>等待上方顯示「離線內容已完整下載」</strong><small>十段語音約 6 MB，視網速幾秒到十幾秒。</small></div>
+                    <div><strong>等待上方顯示「離線內容已完整下載」</strong><small>十段語音約 76 MB，視網速可能需要一到數分鐘，請耐心等它跑完再進行下一步。</small></div>
                   </li>
                   <li>
                     <span className="n">2</span>
@@ -213,7 +213,8 @@ export default function InstallGuide({ hidden }) {
 
               <footer className="guide-foot">
                 <span className="meta">
-                  {status && status.build ? `版本 ${status.build} · ` : ""}視窗 {vw}×{vh}{vvh ? ` · 可見 ${vvh}` : ""}{sw ? ` · 螢幕 ${sw}×${sh}` : ""}{sab ? ` · 底部安全區 ${sab}` : ""}{appH ? ` · 舞台 ${appH}` : ""}
+                  版本 {typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "dev"}
+                  {status && status.build ? ` · 建置 ${status.build}` : ""} · 視窗 {vw}×{vh}{vvh ? ` · 可見 ${vvh}` : ""}{sw ? ` · 螢幕 ${sw}×${sh}` : ""}{sab ? ` · 底部安全區 ${sab}` : ""}{appH ? ` · 舞台 ${appH}` : ""}
                 </span>
                 {supported && (
                   <button type="button" className="guide-recheck" onClick={recheck}>重新檢查</button>

@@ -72,6 +72,29 @@ function byOrder(a, b) {
   return ka[0] - kb[0] || ka[1] - kb[1] || a.localeCompare(b, "zh-Hant");
 }
 
+/* ---- 字幕編碼偵測 ----
+   交付來的 srt 不一定是 UTF-8：字幕軟體常輸出 UTF-16（Windows 記事本的
+   「Unicode」），繁中環境也可能是 Big5。讀錯編碼會整份變亂碼，所以先判斷再轉。 */
+function decodeSrt(buf) {
+  if (buf.length >= 2 && buf[0] === 0xFF && buf[1] === 0xFE) return { text: buf.toString("utf16le", 2), enc: "UTF-16LE" };
+  if (buf.length >= 2 && buf[0] === 0xFE && buf[1] === 0xFF) {
+    const be = Buffer.from(buf.subarray(2, buf.length - ((buf.length - 2) % 2)));
+    be.swap16();
+    return { text: be.toString("utf16le"), enc: "UTF-16BE" };
+  }
+  if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) return { text: buf.toString("utf8", 3), enc: "UTF-8" };
+  // UTF-16 沒有 BOM 時，前段會出現大量 0x00
+  const head = buf.subarray(0, Math.min(buf.length, 512));
+  let nul = 0;
+  for (const b of head) if (b === 0) nul++;
+  if (nul > head.length * 0.2) return { text: buf.toString("utf16le"), enc: "UTF-16LE" };
+  try { return { text: new TextDecoder("utf-8", { fatal: true }).decode(buf), enc: "UTF-8" }; }
+  catch (_) {
+    try { return { text: new TextDecoder("big5").decode(buf), enc: "Big5" }; }
+    catch (_) { return { text: buf.toString("utf8"), enc: "UTF-8?" }; }
+  }
+}
+
 /* ---- 從檔名取作品名：去掉開頭編號與分隔符號 ---- */
 function titleOf(file) {
   return basename(file, extname(file))
@@ -94,14 +117,20 @@ for (const f of srts) {
 const works = audios.map((audio, i) => {
   const base = basename(audio, extname(audio));
   const srt = srtByBase.get(base) || srtByNum.get(orderKey(audio).join("-")) || null;
-  return { n: i + 1, title: titleOf(audio), audio, srt, ext: extname(audio).toLowerCase() };
+  let enc = null, bad = false;
+  if (srt) {
+    const d = decodeSrt(readFileSync(join(srcDir, srt)));
+    enc = d.enc;
+    bad = d.text.includes("\uFFFD");
+  }
+  return { n: i + 1, title: titleOf(audio), audio, srt, enc, bad, ext: extname(audio).toLowerCase() };
 });
 
 /* ---- 印出對照表 ---- */
 say(`\n來源：${srcDir}`);
 say(`找到 ${audios.length} 個音檔、${srts.length} 個字幕檔${DRY ? "（--dry：只試算，不寫入）" : ""}\n`);
 for (const w of works) {
-  say(`  ${pad(w.n)}  ${w.title || "(無法解析，請手動填)"}   ←  ${w.audio}   字幕:${w.srt ? "有" : "缺"}`);
+  say(`  ${pad(w.n)}  ${w.title || "(無法解析，請手動填)"}   ←  ${w.audio}   字幕:${w.srt ? (w.enc === "UTF-8" ? "有" : "有 (" + w.enc + " → UTF-8)") : "缺"}${w.bad ? "  ⚠ 有無法解碼的字元" : ""}`);
 }
 say("");
 
@@ -109,6 +138,8 @@ const missing = works.filter((w) => !w.srt);
 if (missing.length) warn(`有 ${missing.length} 件沒有字幕檔，這些作品可以播放但不會顯示字幕：${missing.map((w) => pad(w.n)).join("、")}`);
 const noTitle = works.filter((w) => !w.title);
 if (noTitle.length) warn(`有 ${noTitle.length} 件無法從檔名解析作品名，匯入後請手動修改 src/data/tours.js 的 WORKS`);
+const garbled = works.filter((w) => w.bad);
+if (garbled.length) warn(`有 ${garbled.length} 個字幕檔含無法解碼的字元，請確認來源編碼：${garbled.map((w) => pad(w.n)).join("、")}`);
 const odd = works.filter((w) => w.ext !== ".mp3");
 if (odd.length) warn(`有 ${odd.length} 件不是 mp3，會沿用原副檔名並寫進 WORKS；iPad Safari 可播 mp3 與 m4a，wav 檔案很大不建議`);
 
@@ -122,7 +153,7 @@ for (const w of works) {
   const nn = pad(w.n);
   copyFileSync(join(srcDir, w.audio), join(AUDIO_DIR, `track${nn}${w.ext}`));
   if (w.srt) {
-    const text = readFileSync(join(srcDir, w.srt), "utf8").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    const text = decodeSrt(readFileSync(join(srcDir, w.srt))).text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
     writeFileSync(join(SRT_DIR, `track${nn}.srt`), text, "utf8");
   }
 }
