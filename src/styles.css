@@ -20,6 +20,10 @@
      includes the space behind the toolbars) and always leave the top bar free */
   --topbar-h: calc(3.2vh + 6vh + env(safe-area-inset-top, 0px));
   --sab: env(safe-area-inset-bottom, 0px);
+  /* 展場把 iPad 嵌在木箱裡，開口下緣比螢幕高，最底下的「逐字稿」按鈕會被擋住按不到。
+     這個值把面板內容整體往上抬；木箱開口如果更小就把數字加大。 */
+  --kiosk-lift: 7vh;
+
   /* the colour the page's bottom edge ends on. iOS can leave a strip below the
      layout viewport that only ever gets a flat fill, so the page fades into
      exactly this colour and the seam cannot be seen, whatever its height. */
@@ -137,7 +141,7 @@ button{ font-family:inherit; }
 }
 .home-caption{
   position:absolute;
-  left:0; right:0; bottom:calc(3.6% + env(safe-area-inset-bottom, 0px));
+  left:0; right:0; bottom:calc(3.6% + var(--kiosk-lift, 0px) + env(safe-area-inset-bottom, 0px));
   text-align:center;
   font-size: clamp(15px, calc(1.5vmin + .6vw), 30px);
   font-weight:700;
@@ -367,7 +371,7 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
   position:relative;
   height:100%;
   display:flex; flex-direction:column;
-  padding:4.2vh 7vmin calc(1.6vh + env(safe-area-inset-bottom, 0px)) 7vmin;
+  padding:4.2vh 7vmin calc(1.6vh + var(--kiosk-lift, 0px) + env(safe-area-inset-bottom, 0px)) 7vmin;
   color:#fbf6ec;
 }
 
@@ -520,7 +524,7 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
 .chevron{
   flex:0 0 auto;
   align-self:center;
-  height:3.6vh; margin-top:2.2vh; padding:0 2vmin;
+  min-height:5.4vh; margin-top:1.6vh; padding:1.2vh 6vmin;
   border:none; background:none;
   color:rgba(251,246,236,.9); cursor:pointer;
   display:flex; align-items:center; justify-content:center; gap:.4em;

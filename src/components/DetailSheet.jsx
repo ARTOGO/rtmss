@@ -231,7 +231,14 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
       // measure the natural content height (scrollHeight never shrinks below the
       // current box, so release the box first), then apply the floor
       sheet.style.height = "auto";
-      const need = body.scrollHeight;
+      // scrollHeight of a flex column leaves out padding-bottom, which matters
+      // now that --kiosk-lift adds a lot of it: measure to the last child and
+      // add the padding ourselves, or the controls fall off the bottom edge
+      const pb = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+      const last = body.lastElementChild;
+      const need = last
+        ? last.getBoundingClientRect().bottom - body.getBoundingClientRect().top + pb
+        : body.scrollHeight;
       sheet.style.height = Math.max(need, stageH * 0.36) + "px";
     };
     fit();
