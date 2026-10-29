@@ -192,19 +192,24 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
 .unit-fx .hero-ring{
   fill:none;
   stroke:#ffffff;
-  stroke-width:7;
   stroke-linejoin:round;
+  stroke-linecap:round;
   opacity:0;
-  filter:url(#hero-glow);
-  /* the glow is a Gaussian blur and its opacity is rewritten ~20×/s while a
-     tour plays; without this the blur is recomputed on every one of those
-     writes. Promoted, it is blurred once and only its alpha changes. */
+  /* only the group's alpha changes at runtime, so let the compositor own it */
   will-change:opacity;
   animation:hero-in .6s ease forwards;
 }
+/* the halo: two wide, faint strokes under a crisp one — no blur filter.
+   Widths are in the artwork's own 1035-unit coordinate space. */
+.unit-fx .hero-ring .halo-a{ stroke-width:34; opacity:.09; }
+.unit-fx .hero-ring .halo-b{ stroke-width:17; opacity:.17; }
+.unit-fx .hero-ring .core{ stroke-width:7; }
 @keyframes hero-in{ to{ opacity:.95; } }
-/* rings 2 / 3: only their opacity is written at runtime (see DetailSheet) */
-.unit-fx .hero-ring-2, .unit-fx .hero-ring-3{ stroke-width:5; animation:none; transition:opacity .12s linear; }
+/* rings 2 / 3: thinner, and only their opacity is written at runtime (DetailSheet) */
+.unit-fx .hero-ring-2, .unit-fx .hero-ring-3{ animation:none; transition:opacity .12s linear; }
+.unit-fx .hero-ring-2 .core, .unit-fx .hero-ring-3 .core{ stroke-width:5; }
+.unit-fx .hero-ring-2 .halo-a, .unit-fx .hero-ring-3 .halo-a{ stroke-width:26; opacity:.08; }
+.unit-fx .hero-ring-2 .halo-b, .unit-fx .hero-ring-3 .halo-b{ stroke-width:13; opacity:.15; }
 
 /* tappable / draggable core */
 .ripple-btn{
@@ -339,10 +344,16 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
   position:absolute; inset:0;
   border-radius:30px 30px 0 0;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.04) 30%, rgba(255,255,255,0) 60%),
-    linear-gradient(180deg, rgba(14,42,44,.42) 0%, rgba(14,42,44,.52) 100%);
-  -webkit-backdrop-filter:blur(16px) saturate(130%);
-  backdrop-filter:blur(16px) saturate(130%);
+    linear-gradient(180deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,.05) 30%, rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, rgba(14,42,44,.62) 0%, rgba(14,42,44,.76) 100%);
+  /* 即時毛玻璃是整個 App 最貴的一項：它要把底下的畫面每幀重新模糊一次，
+     而這個面板在整段語音播放期間都開著。展場的 iPad 與觀眾的手機都因此
+     發燙，所以預設關閉，改用加深的半透明漸層達到同樣的可讀性。
+
+     要找回玻璃感：把下面兩行的註解拿掉即可，8 代表模糊半徑（原本是 16，
+     成本接近半徑的平方，所以 8 大約只要四分之一的代價）。 */
+  /* -webkit-backdrop-filter:blur(8px) saturate(130%); */
+  /* backdrop-filter:blur(8px) saturate(130%); */
   border-top:1px solid rgba(255,255,255,.55);
   box-shadow:
     0 -24px 70px rgba(8,30,30,.28),
@@ -355,21 +366,9 @@ img.unit-art{ -webkit-user-drag:none; user-select:none; }
   position:absolute; inset:0;
   background:radial-gradient(120% 55% at 18% 0%, rgba(255,255,255,.26), rgba(255,255,255,0) 60%);
 }
-.sheet-glass::after{            /* slow travelling sheen: the "liquid" */
-  content:"";
-  position:absolute; top:-20%; bottom:-20%; width:45%;
-  left:0;
-  background:linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.16) 50%, rgba(255,255,255,0) 100%);
-  transform:translateX(-160%) skewX(-12deg);
-  will-change:transform;
-  animation:sheen 11s ease-in-out infinite;
-}
-@keyframes sheen{
-  0%,15%   { transform:translateX(-160%) skewX(-12deg); opacity:0; }
-  30%      { opacity:1; }
-  70%      { opacity:1; }
-  85%,100% { transform:translateX(320%) skewX(-12deg); opacity:0; }
-}
+/* 這裡原本有一道每 11 秒掃過面板的反光帶。它本身不貴，但它疊在面板上，
+   一動就逼著整個面板重畫——而且只要內頁開著就永遠在跑，等於整段語音播放
+   期間機器沒有一刻休息。效果幾乎沒人會注意到，代價卻是持續的，所以移除。 */
 
 .sheet-body{
   position:relative;

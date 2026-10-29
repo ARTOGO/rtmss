@@ -33,6 +33,9 @@ import { noteFrame } from "../lib/health.js";
    All lengths are viewport pixels; the stage is measured on resize.
    ------------------------------------------------------------------ */
 
+/* 水波紋平時的更新率。拖曳與開關內頁的轉場不受限制。 */
+const IDLE_FPS = 20;
+
 const P = {
   homeSpring: 1.2,     // pull toward the wander target (1/s²)
   damping: 2.6,        // velocity damping (1/s)
@@ -201,10 +204,11 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
       if (lastRaf) noteFrame(nowMs - lastRaf);
       lastRaf = nowMs;
       const t = nowMs / 1000 - clockLost;
-      /* 30 fps is indistinguishable for motion this slow and halves the style
-         work; drags and the open/close swim still run at full rate */
+      /* IDLE_FPS: the drift is slow enough that the eye cannot tell 20 from 30,
+         but the style and compositing work drops by a third. Drags and the
+         open/close swim are exempt — those are fast and read as responsiveness. */
       const live = dragRef.current.active || t < settleUntil;
-      if (prev && !live && t - prev < 1 / 30) return;
+      if (prev && !live && t - prev < 1 / IDLE_FPS) return;
       const dt = Math.min(0.05, prev ? t - prev : 0.016);
       prev = t;
 

@@ -142,17 +142,11 @@ export default function RippleDefs() {
   return (
     <svg className="ripple-defs" aria-hidden="true" focusable="false">
       <symbol id="kv-ripple" viewBox={ART_VIEWBOX} dangerouslySetInnerHTML={{ __html: html }} />
-      {/* soft glow used by the focused unit's inner ring */}
-      {/* Kept deliberately cheap: one blur over a modest region. The rings it
-          is applied to must only ever change OPACITY at runtime — changing
-          stroke width or geometry re-runs the filter every frame, which is
-          what made phones hot while a track was playing. */}
-      <filter id="hero-glow" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b" />
-        <feMerge>
-          <feMergeNode in="b" /><feMergeNode in="b" /><feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
+      {/* The focused unit's rings used to glow through a Gaussian blur filter
+          defined here. Their opacity is rewritten ~20×/s while a tour plays,
+          and that kept re-rendering the blur for the whole length of a track.
+          The halo is now three stacked strokes (see HeroRing in RippleUnit and
+          .hero-ring in styles.css) — no filter, same soft edge. */}
     </svg>
   );
 }

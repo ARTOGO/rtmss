@@ -21,10 +21,15 @@ export const health = {
   frames: 0                // 累計畫格數，拿來看平均
 };
 
+/* 開 App 的頭幾秒要解開程式、產生水波紋圖、算版面，停頓幾百毫秒是正常的。
+   那個數字跟「展場跑了一下午開始過熱」是兩回事，混在一起看反而失去意義。 */
+const SETTLE_MS = 3000;
+
 export function noteFrame(gapMs) {
   // 從待機恢復、或分頁切回來的第一幀間隔很長，但那不是卡頓
   if (!(gapMs > 0) || gapMs > 3000) return;
   health.frames++;
+  if (performance.now() < SETTLE_MS) return;   // 啟動成本不列入
   if (gapMs > health.worstFrameMs) health.worstFrameMs = gapMs;
   if (gapMs > HITCH_MS) health.hitches++;
 }

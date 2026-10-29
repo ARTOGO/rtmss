@@ -26,6 +26,21 @@ const DRAG_THRESHOLD = 10;       // px
 
 const rnd = (i, n) => { const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
 
+/* One lit ring of the focused artwork.
+   The halo used to be an SVG Gaussian blur, but its opacity is rewritten ~20×/s
+   while a tour plays, and a blur that large is re-rendered far too readily for
+   something running the whole time a visitor is listening. Three strokes of
+   decreasing width and increasing opacity give the same soft edge for the cost
+   of three ordinary paths. The group carries the opacity, so the runtime write
+   in DetailSheet (lightHero) still targets one element per ring. */
+const HeroRing = ({ n, d }) => (
+  <g className={`hero-ring hero-ring-${n}`}>
+    <path className="halo-a" d={d} />
+    <path className="halo-b" d={d} />
+    <path className="core" d={d} />
+  </g>
+);
+
 const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen, dragRef, focused, dimmed, artSrc }, ref) {
   const [sonars, setSonars] = useState([]);
   const press = useRef(null);
@@ -106,9 +121,9 @@ const RippleUnit = forwardRef(function RippleUnit({ tour, layout, index, onOpen,
       <svg className="unit-fx" viewBox={ART_VIEWBOX} aria-hidden="true">
         {focused && (
           <>
-            <path className="hero-ring hero-ring-1" d={INNER_RING_D} />
-            <path className="hero-ring hero-ring-2" d={RING2_D} />
-            <path className="hero-ring hero-ring-3" d={RING3_D} />
+            <HeroRing n={1} d={INNER_RING_D} />
+            <HeroRing n={2} d={RING2_D} />
+            <HeroRing n={3} d={RING3_D} />
           </>
         )}
       </svg>
