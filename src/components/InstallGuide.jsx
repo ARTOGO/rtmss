@@ -167,14 +167,16 @@ export default function InstallGuide({ hidden }) {
         <div className="guide-backdrop" onClick={dismiss}>
           <section className="guide" role="dialog" aria-modal="true" aria-label="安裝說明" onClick={(e) => e.stopPropagation()}>
             <div className="guide-glass" aria-hidden="true" />
-            <div className="guide-body">
-              <header className="guide-head">
-                <h2>{standalone ? "離線版狀態" : "安裝到 iPad 主畫面"}</h2>
-                <button type="button" className="guide-close" aria-label="關閉" onClick={dismiss}>
-                  <svg viewBox="0 0 24 24" fill="none"><path d="M7 7L17 17M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                </button>
-              </header>
+            {/* outside the scrolling body: the close button must never be
+                scrolled away or pushed under the status bar */}
+            <header className="guide-head">
+              <h2>{standalone ? "離線版狀態" : "安裝到 iPad 主畫面"}</h2>
+              <button type="button" className="guide-close" aria-label="關閉" onClick={dismiss}>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M7 7L17 17M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+              </button>
+            </header>
 
+            <div className="guide-body">
               <ul className={`guide-status${complete ? " ok" : ""}`}>
                 <li className={complete ? "done" : ""}>
                   <span className="mark">{complete ? <CheckIcon /> : <span className="spin" />}</span>

@@ -563,7 +563,11 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
   position:absolute; inset:0;
   z-index:20;
   display:flex; align-items:center; justify-content:center;
-  padding:2.4vh 5vmin;
+  /* keep the card clear of the notch / dynamic island and the home indicator,
+     or its title bar ends up under the status bar and the close button cannot
+     be tapped at all */
+  padding:calc(2.4vh + env(safe-area-inset-top, 0px)) 5vmin
+          calc(2.4vh + env(safe-area-inset-bottom, 0px)) 5vmin;
   background:rgba(8,30,30,.35);
   animation:guide-in .35s ease;
 }
@@ -595,13 +599,18 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
   position:relative;
   /* --kiosk-lift: the cabinet opening hides the bottom of the screen, so leave
      room to scroll the version line above it */
-  padding:3vh 5vmin calc(2.4vh + var(--kiosk-lift, 0px) + env(safe-area-inset-bottom, 0px)) 5vmin;
+  padding:0 5vmin calc(2.4vh + var(--kiosk-lift, 0px)) 5vmin;
   flex:1 1 auto; min-height:0;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;      /* 捲到底不要連帶拉動後面的頁面 */
 }
-.guide-head{ display:flex; align-items:center; justify-content:space-between; gap:2vmin; }
+.guide-head{
+  position:relative;              /* above .guide-glass */
+  flex:0 0 auto;                  /* fixed header: never scrolls out of reach */
+  display:flex; align-items:center; justify-content:space-between; gap:2vmin;
+  padding:2.6vh 5vmin 1.6vh 5vmin;
+}
 .guide-head h2{
   margin:0;
   font-family:var(--serif);
