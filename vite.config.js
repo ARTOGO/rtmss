@@ -77,12 +77,16 @@ async function addAll(cache, list, limit) {
 }
 
 self.addEventListener("install", (event) => {
+  // Call this up front, NOT awaited inside waitUntil: skipWaiting() only settles
+  // once this worker becomes active, which cannot happen until install finishes,
+  // so awaiting it here left the new build sitting in "installed" forever — the
+  // iPad kept running the previous version until the app was force-quit.
+  self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     // failures are tolerated: activate re-checks, the fetch handler heals, and the
     // status card shows n/N so staff can see whether anything is still missing
     await addAll(cache, ASSETS, 3);
-    await self.skipWaiting();
   })());
 });
 
