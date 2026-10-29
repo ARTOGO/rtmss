@@ -631,6 +631,30 @@ input[type="range"].seek::-moz-range-thumb{ width:1.7vh; height:1.7vh; border:no
 }
 @keyframes spin{ to{ transform:rotate(360deg); } }
 
+/* 效能數字：只出現在這張卡裡（長按首頁標題才會開），觀眾看不到 */
+.guide-perf{
+  margin:1.6vh 0 0 0; padding:1.4vh 2.4vmin;
+  border-radius:14px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.14);
+  font-size:clamp(13px, 1.6vh, 16px); letter-spacing:.04em;
+}
+.guide-perf > div{ display:flex; align-items:baseline; justify-content:space-between; gap:2vmin; padding:.42vh 0; }
+.guide-perf dt{ opacity:.68; font-weight:400; }
+.guide-perf dd{ margin:0; font-weight:700; font-variant-numeric:tabular-nums; }
+.guide-perf dd.warn{ color:#ffb38a; }
+.guide-perf-note{
+  margin:1.1vh 0 0 0; padding-top:1.1vh;
+  border-top:1px solid rgba(255,255,255,.12);
+  font-size:clamp(11px, 1.3vh, 13px); line-height:1.65; color:rgba(251,246,236,.6);
+}
+.guide-perf-note button{
+  display:inline-block; margin-left:.6em;
+  border:1px solid rgba(251,246,236,.4); border-radius:999px;
+  background:none; color:rgba(251,246,236,.85); cursor:pointer;
+  padding:.3vh 1.8vmin; font-size:inherit; font-family:inherit; letter-spacing:.06em;
+}
+
 .guide-steps{
   list-style:none; margin:2vh 0 0 0; padding:0;
   display:flex; flex-direction:column; gap:1.6vh;

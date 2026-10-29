@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { isIdle } from "../lib/idle.js";
+import { health, resetHealth } from "../lib/health.js";
 
 /* ------------------------------------------------------------------
    InstallGuide — for the people setting up the exhibition iPad.
@@ -47,10 +49,17 @@ function CheckIcon() {
   );
 }
 
+/* 「3 小時 12 分」 */
+function sinceText(ms) {
+  const m = Math.floor(ms / 60000), h = Math.floor(m / 60);
+  return h ? `${h} 小時 ${m % 60} 分` : `${m} 分`;
+}
+
 export default function InstallGuide({ hidden }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(null);       // { total, cached, build }
   const [standalone, setStandalone] = useState(isStandalone());
+  const [perf, setPerf] = useState(null);
   const supported = typeof navigator !== "undefined" && "serviceWorker" in navigator && !import.meta.env.DEV;
 
   const query = useCallback(() => {
@@ -90,6 +99,29 @@ export default function InstallGuide({ hidden }) {
     if (!isStandalone() && !seen) setOpen(true);
     return () => { mq && mq.removeEventListener && mq.removeEventListener("change", onChange); };
   }, []);
+
+  /* Live frame rate, measured only while this card is open — a kiosk must not
+     run a monitoring loop all day to prove it is not running loops all day.
+     The cumulative figures come from lib/health.js and cost nothing. */
+  useEffect(() => {
+    if (!open) return undefined;
+    let raf = 0, frames = 0, windowStart = performance.now();
+    const loop = (now) => {
+      raf = requestAnimationFrame(loop);
+      frames++;
+      if (now - windowStart < 1000) return;
+      setPerf({
+        fps: Math.round((frames * 1000) / (now - windowStart)),
+        idle: isIdle(),
+        worst: Math.round(health.worstFrameMs),
+        hitches: health.hitches,
+        upFor: Date.now() - health.startedAt
+      });
+      frames = 0; windowStart = now;
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
 
   /* staff shortcut from the installed app: long-press the home title */
   useEffect(() => {
@@ -154,11 +186,46 @@ export default function InstallGuide({ hidden }) {
                 </li>
               </ul>
 
+              {/* 效能：只在這張卡裡，觀眾看不到 */}
+              <dl className="guide-perf">
+                <div>
+                  <dt>畫面更新率</dt>
+                  <dd className={perf && perf.fps < 24 && !perf.idle ? "warn" : ""}>
+                    {perf ? `${perf.fps} fps` : "量測中…"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>目前狀態</dt>
+                  <dd>{perf ? (perf.idle ? "待機中（動畫已停）" : "運作中") : "—"}</dd>
+                </div>
+                <div>
+                  <dt>最久的一次停頓</dt>
+                  <dd className={perf && perf.worst >= 400 ? "warn" : ""}>
+                    {perf ? `${perf.worst} ms` : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>明顯卡頓次數</dt>
+                  <dd className={perf && perf.hitches > 20 ? "warn" : ""}>
+                    {perf ? `${perf.hitches} 次` : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>已連續運行</dt>
+                  <dd>{perf ? sinceText(perf.upFor) : "—"}</dd>
+                </div>
+                <p className="guide-perf-note">
+                  「最久的一次停頓」與「卡頓次數」是從開啟 App 到現在累計的。數字一直長大、
+                  或更新率掉到 20 fps 以下，通常代表機器過熱降頻——先確認木箱有通風、亮度調低。
+                  <button type="button" onClick={() => { resetHealth(); setPerf(null); }}>歸零重新計算</button>
+                </p>
+              </dl>
+
               {!standalone && (
                 <ol className="guide-steps">
                   <li>
                     <span className="n">1</span>
-                    <div><strong>等待上方顯示「離線內容已完整下載」</strong><small>十段語音約 76 MB，視網速可能需要一到數分鐘，請耐心等它跑完再進行下一步。</small></div>
+                    <div><strong>等待上方顯示「離線內容已完整下載」</strong><small>十段語音約 29 MB，視網速可能需要一到數分鐘，請耐心等它跑完再進行下一步。</small></div>
                   </li>
                   <li>
                     <span className="n">2</span>

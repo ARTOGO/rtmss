@@ -3,6 +3,7 @@ import { addRipple, pruneRipples, rippleWave, rippleDist, nowSec } from "../lib/
 import { HERO } from "../data/tours.js";
 import { ART_SCALE } from "../components/RippleUnit.jsx";
 import { isIdle, onIdleChange } from "../lib/idle.js";
+import { noteFrame } from "../lib/health.js";
 
 /* ------------------------------------------------------------------
    useUnitPhysics — a small soft-body simulation for the home-screen
@@ -191,11 +192,14 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     /* Seconds the loop spent stopped (idle / tab hidden). The wander and
        breathing phases are functions of t, so without this a unit would jump
        to wherever its sine had travelled to while nothing was drawing. */
-    let clockLost = 0, stoppedAt = 0;
+    let clockLost = 0, stoppedAt = 0, lastRaf = 0;
     const simNow = () => performance.now() / 1000 - clockLost;
     function step(nowMs) {
       if (!running) return;
       raf = requestAnimationFrame(step);
+      // free running-health sample: how long the main thread took to come back
+      if (lastRaf) noteFrame(nowMs - lastRaf);
+      lastRaf = nowMs;
       const t = nowMs / 1000 - clockLost;
       /* 30 fps is indistinguishable for motion this slow and halves the style
          work; drags and the open/close swim still run at full rate */
@@ -377,7 +381,7 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     function start() {
       if (raf) cancelAnimationFrame(raf);
       if (stoppedAt) { clockLost += performance.now() / 1000 - stoppedAt; stoppedAt = 0; }
-      running = true; prev = 0;
+      running = true; prev = 0; lastRaf = 0;
       if (reduceMotion.matches) {
         // still layout; the focused unit still jumps to the hero spot
         units.forEach((u, i) => {
