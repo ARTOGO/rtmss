@@ -23,6 +23,7 @@
 import { readdirSync, statSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { join, extname, basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const AUDIO_DIR = join(ROOT, "public", "audio");
@@ -195,6 +196,17 @@ if (staleAudio.length || staleSrt.length) {
     warn(`還有上一批留下的多餘檔案，會被打包但不會被使用：${[...staleAudio, ...staleSrt].join("、")}`);
     warn("確定不需要的話，重跑一次並加上 --clean 即可刪除。");
   }
+}
+
+/* ---- 重壓音檔 ＋ 重算音量曲線 ---- */
+/* 這一步不能省：音量曲線（src/data/levels.js）是播放時圈圈發光的依據，
+   跟音檔一一對應。換了音檔卻沒重算，圈圈就會跟著上一批的聲音亮。 */
+say("");
+const prep = spawnSync(process.execPath, [join(ROOT, "scripts", "prepare-audio.mjs")], { stdio: "inherit" });
+if (prep.status !== 0) {
+  warn("音檔重壓／音量曲線這一步沒有完成（多半是沒裝 ffmpeg）。");
+  warn("請先安裝 ffmpeg（Windows：winget install Gyan.FFmpeg），再執行：npm run prepare-audio");
+  warn("在那之前先不要建置上線，否則圈圈的發光會對不上新的聲音。");
 }
 
 say("\n下一步：");

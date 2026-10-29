@@ -1,14 +1,15 @@
 {
   "name": "rtmss",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
   "description": "十四張渡口洄聲 離線語音導覽 (iPad)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "import-content": "node scripts/import-content.mjs"
+    "import-content": "node scripts/import-content.mjs",
+    "prepare-audio": "node scripts/prepare-audio.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

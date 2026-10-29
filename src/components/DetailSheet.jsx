@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseSrt, cueIndexAt } from "../lib/srt.js";
+import { LEVEL_HZ, levelsFor } from "../data/levels.js";
 
 /* ------------------------------------------------------------------
    DetailSheet — the frosted "liquid glass" sheet that rises from the
@@ -12,14 +13,18 @@ import { parseSrt, cueIndexAt } from "../lib/srt.js";
    transcript, current cue highlighted and kept in view.
 
    Audio starts automatically when the sheet opens (the tap that opened
-   it counts as the user gesture). The waveform glyph is driven by a
-   Web Audio AnalyserNode reading the real signal; if the analyser can't
-   see the stream (e.g. some file:// setups) it falls back to a CSS
-   animation so the glyph still moves while playing.
+   it counts as the user gesture).
+
+   The focused ripple's rings brighten with the voice. That level is NOT
+   measured while playing: it is read from a curve computed at build time
+   (src/data/levels.js, see scripts/prepare-audio.mjs) and looked up by
+   currentTime. Measuring it live meant routing the audio through a Web
+   Audio AnalyserNode, which on iOS takes playback off the system's media
+   path — the exhibition iPad then dropped out whenever the main thread
+   was busy. A table lookup looks the same and costs nothing.
    ------------------------------------------------------------------ */
 
 const SKIP = 15;
-const BARS = 5;
 const MISSING_AUDIO = "此件作品的語音尚未提供，可先閱讀文字。";
 
 function fmt(sec) {
@@ -60,11 +65,6 @@ function resetHero() {
   document.querySelectorAll(".hero-ring").forEach((el) => { el.style.opacity = ""; el.style.strokeWidth = ""; });
 }
 
-/* frequency bands (Hz) for the 5 bars — voice-centred; centre bar = lowest band */
-const BANDS = [[90, 250], [250, 600], [600, 1400], [1400, 3000], [3000, 6000]];
-const BAR_ORDER = [3, 1, 0, 2, 4];   // which band each bar (left→right) shows
-const IDLE = [0.45, 0.75, 1.0, 0.65, 0.5]; // resting shape
-
 /* Material-style transport glyphs (24-unit grid). The skip glyph is the
    "replay" / "forward" ring-arrow with the seconds set inside. */
 const REPLAY_D = "M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z";
@@ -99,21 +99,22 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
   const listRef = useRef(null);
   const seeking = useRef(false);
   const grip = useRef(null);
-  const barRefs = useRef([]);
   const sheetRef = useRef(null);
   const bodyRef = useRef(null);
   const titleWrapRef = useRef(null);
   const titleRef = useRef(null);
   const [marquee, setMarquee] = useState(0);   // px the title must travel, 0 = fits
-  const graph = useRef(null);      // { ctx, analyser, data, hz }
   const meterRaf = useRef(0);
+
+  const subRef = useRef(null);
+  const lastSubH = useRef(-1);
+  const [refit, setRefit] = useState(0);   // bumped only when the subtitle's height changes
 
   const [expanded, setExpanded] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [status, setStatus] = useState("");
-  const [meterFallback, setMeterFallback] = useState(false);
 
   const cues = useMemo(() => {
     if (!tour) return [];
@@ -123,35 +124,11 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
   const hasTiming = !!(tour && tour.srt);
   const cueIdx = hasTiming ? cueIndexAt(cues, time) : -1;
 
-  /* ---- Web Audio analyser (built once, on first play) ---- */
-  const ensureGraph = useCallback(() => {
-    if (graph.current) return graph.current;
-    const a = audioRef.current;
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!a || !Ctx) return null;
-    try {
-      const ctx = new Ctx();
-      const src = ctx.createMediaElementSource(a);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.72;
-      src.connect(analyser);
-      analyser.connect(ctx.destination);
-      graph.current = { ctx, analyser, data: new Uint8Array(analyser.frequencyBinCount), hz: ctx.sampleRate / analyser.fftSize };
-    } catch (_) {
-      graph.current = null;
-      setMeterFallback(true);
-    }
-    return graph.current;
-  }, []);
-
   const play = useCallback(() => {
     const a = audioRef.current;
     if (!a || !a.getAttribute("src")) { setStatus(MISSING_AUDIO); return; }
-    const g = ensureGraph();
-    if (g && g.ctx.state === "suspended") g.ctx.resume().catch(() => {});
     a.play().then(() => setPlaying(true)).catch(() => { /* autoplay refused: the play button remains */ });
-  }, [ensureGraph]);
+  }, []);
 
   /* load / unload with the tour — and start speaking right away */
   useEffect(() => {
@@ -168,56 +145,34 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
     }
   }, [tour, open, play]);
 
-  /* ---- level meter: real amplitude → bar heights ---- */
+  /* ---- ring glow: read the pre-computed level curve at currentTime ----
+     Costs one array lookup per tick. Nothing touches the audio itself, so
+     playback keeps the system's own media path (see the note at the top). */
   useEffect(() => {
-    const setBars = (levels) => {
-      for (let i = 0; i < BARS; i++) {
-        const el = barRefs.current[i];
-        if (el) el.style.transform = `scaleY(${levels[i].toFixed(3)})`;
-      }
-    };
     if (!playing) {
       if (meterRaf.current) cancelAnimationFrame(meterRaf.current);
       meterRaf.current = 0;
-      setBars(IDLE);
       resetHero();
       return undefined;
     }
-    const g = graph.current;
-    if (!g) { setMeterFallback(true); return undefined; }
+    const a = audioRef.current;
+    const env = tour ? levelsFor(tour.id) : null;
+    if (!a || !env || !env.length) { resetHero(); return undefined; }
 
-    let silent = 0, smooth = 0, last = 0;
-    const GAP = 1000 / 20;              // 20 fps is plenty for a level meter
+    let smooth = 0, last = 0;
+    const GAP = 1000 / 20;              // the curve itself is 20 points a second
     const loop = (now) => {
       meterRaf.current = requestAnimationFrame(loop);
       if (now - last < GAP) return;
       last = now;
-      g.analyser.getByteFrequencyData(g.data);
-      let total = 0;
-      const bandLevel = BANDS.map(([lo, hi]) => {
-        const i0 = Math.max(1, Math.floor(lo / g.hz)), i1 = Math.min(g.data.length - 1, Math.ceil(hi / g.hz));
-        let sum = 0, n = 0;
-        for (let i = i0; i <= i1; i++) { sum += g.data[i]; n++; }
-        const v = n ? sum / n / 255 : 0;
-        total += v;
-        return v;
-      });
-      if (total < 0.002) { if (++silent > 45) setMeterFallback(true); }
-      else { silent = 0; setMeterFallback(false); }
-      const levels = BAR_ORDER.map((b, i) => {
-        const v = Math.pow(bandLevel[b], 0.8);           // gentle compression
-        return Math.min(1, 0.18 + Math.min(1, v * 1.6) * (0.82 * IDLE[i] / IDLE[2]));
-      });
-      setBars(levels);
-
-      // overall loudness (voice bands weighted) → the hero's rings
-      const loud = Math.min(1, (bandLevel[0] * 1.0 + bandLevel[1] * 1.2 + bandLevel[2] * 1.0 + bandLevel[3] * 0.6) / 3.8 * 1.35);
+      const i = Math.floor(a.currentTime * LEVEL_HZ);
+      const loud = i >= 0 && i < env.length ? env[i] / 255 : 0;
       smooth += (loud - smooth) * (loud > smooth ? 0.45 : 0.12);   // fast attack, slow release
       lightHero(smooth);
     };
     loop();
     return () => { if (meterRaf.current) cancelAnimationFrame(meterRaf.current); meterRaf.current = 0; resetHero(); };
-  }, [playing]);
+  }, [playing, tour]);
 
   /* collapsed height follows the content (never below 41% of the stage), so a
      short viewport (iPad Safari with toolbars) can't squash the subtitle onto
@@ -244,7 +199,20 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [expanded, open, tour, cueIdx]);
+  }, [expanded, open, tour, refit]);
+
+  /* The subtitle box reserves two lines, so one cue to the next almost never
+     changes how tall the sheet has to be. Re-running fit() on every cue was
+     forcing two full relayouts of the frosted panel every couple of seconds —
+     and resizing a backdrop-filter element repaints its blur. Measure the
+     subtitle instead (one read, no mutation) and only re-fit when its height
+     really moved, i.e. when a line wraps. */
+  useEffect(() => {
+    const sub = subRef.current;
+    if (!sub || expanded) return;
+    const h = sub.getBoundingClientRect().height;
+    if (Math.abs(h - lastSubH.current) > 1) { lastSubH.current = h; setRefit((n) => n + 1); }
+  }, [cueIdx, expanded, open, tour]);
 
   /* long title: measure the overflow and let CSS sweep it back and forth */
   useEffect(() => {
@@ -317,7 +285,6 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
         <audio
           ref={audioRef}
           preload="auto"
-          crossOrigin="anonymous"
           onLoadedMetadata={() => setDuration(audioRef.current.duration || 0)}
           onTimeUpdate={() => { if (!seeking.current) setTime(audioRef.current.currentTime); }}
           onEnded={() => { setPlaying(false); }}
@@ -341,7 +308,7 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
 
           {/* collapsed: current subtitle line — expanded: full transcript */}
           <div className="sheet-text">
-            <p className="subtitle" key={cueIdx}>{subtitle}</p>
+            <p className="subtitle" key={cueIdx} ref={subRef}>{subtitle}</p>
             <div className="transcript" ref={listRef} role="list">
               {cues.map((c, i) => (
                 <p key={i} className={i === cueIdx ? "cue current" : "cue"} role="listitem">{c.text}</p>
