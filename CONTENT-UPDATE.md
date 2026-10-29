@@ -239,6 +239,15 @@ srt 的時間軸沒有對應這支音檔。字幕是依音檔播放時間對照�
 另外展場 iPad 封在木箱裡、螢幕整天亮著，晶片到溫度上限會降頻，各種效果都會跟著卡。
 箱內請留通風或散熱孔，並確認接著電源。
 
+**想改「多久沒人用就停掉動畫」**
+`src/lib/idle.js` 最上面的 `IDLE_AFTER`（預設 `120` 秒）。超過這個時間沒人碰畫面、
+也沒在播語音，首頁的水波紋就完全靜止，CPU／GPU 的持續負擔歸零，機器比較不會熱；
+觀眾一碰就立刻恢復，而且那一下觸碰同時會被當成正常的點擊，不會「要按兩次」。
+設成很大的數字等於關掉這個行為。
+
+注意這**不會把畫面變暗**：網頁改不了 iPad 的背光。要省電降溫，請調低 iPad 的系統
+亮度（設定 → 螢幕顯示與亮度），並讓木箱通風。
+
 **展場木箱開口擋住畫面最下緣（按不到「逐字稿」）**
 `src/styles.css` 最上方的 `--kiosk-lift`（預設 `7vh`）會把面板內容與首頁底部文字整體往上抬。
 開口更小就把數字加大，例如 `10vh`；沒有遮擋時設成 `0px` 即可回到原本的版面。
@@ -263,6 +272,7 @@ src/components/RippleUnit.jsx   單一水波紋（圖、可點核心、標籤）
 src/components/WaterBackdrop.jsx  WebGL 水面（漸層、水光、漣漪扭曲）
 src/hooks/useUnitPhysics.js     水波紋物理：漂移、呼吸、互斥、拖曳、主角游動
 src/lib/srt.js                  SRT 解析與「目前句子」查找
+src/lib/idle.js                 待機判斷：沒人用就停掉動畫（IDLE_AFTER 可調）
 vite.config.js                  建置設定 ＋ 離線 service worker 產生器
 .github/workflows/deploy.yml    推 main 自動部署到 GitHub Pages
 ```

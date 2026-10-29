@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { addRipple, pruneRipples, rippleWave, rippleDist, nowSec } from "../lib/ripples.js";
 import { HERO } from "../data/tours.js";
 import { ART_SCALE } from "../components/RippleUnit.jsx";
+import { isIdle, onIdleChange } from "../lib/idle.js";
 
 /* ------------------------------------------------------------------
    useUnitPhysics — a small soft-body simulation for the home-screen
@@ -179,7 +180,7 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
        simulating and stop writing their transforms: that also keeps the sheet's
        backdrop blur from being recomputed every frame behind them */
     let settleUntil = 0;
-    const u_frozen = (i) => focusRef.current >= 0 && i !== focusRef.current && performance.now() / 1000 > settleUntil;
+    const u_frozen = (i) => focusRef.current >= 0 && i !== focusRef.current && simNow() > settleUntil;
 
     let lastTap = tapSignal.current;
     let dragWasActive = false, dragIndex = -1;
@@ -187,10 +188,15 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
     let focusWas = -1;
 
     let raf = 0, prev = 0, running = true;
+    /* Seconds the loop spent stopped (idle / tab hidden). The wander and
+       breathing phases are functions of t, so without this a unit would jump
+       to wherever its sine had travelled to while nothing was drawing. */
+    let clockLost = 0, stoppedAt = 0;
+    const simNow = () => performance.now() / 1000 - clockLost;
     function step(nowMs) {
       if (!running) return;
       raf = requestAnimationFrame(step);
-      const t = nowMs / 1000;
+      const t = nowMs / 1000 - clockLost;
       /* 30 fps is indistinguishable for motion this slow and halves the style
          work; drags and the open/close swim still run at full rate */
       const live = dragRef.current.active || t < settleUntil;
@@ -370,6 +376,7 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
 
     function start() {
       if (raf) cancelAnimationFrame(raf);
+      if (stoppedAt) { clockLost += performance.now() / 1000 - stoppedAt; stoppedAt = 0; }
       running = true; prev = 0;
       if (reduceMotion.matches) {
         // still layout; the focused unit still jumps to the hero spot
@@ -391,13 +398,26 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
         raf = requestAnimationFrame(step);
       }
     }
-    function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; }
+    function stop() {
+      if (running && !stoppedAt) stoppedAt = performance.now() / 1000;
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+
+    /* The loop runs only when it can be seen and someone is around: no idle
+       kiosk keeps ten units animating to an empty room (see lib/idle.js). */
+    const sync = () => {
+      const want = !document.hidden && !isIdle();
+      if (want === running) return;
+      if (want) start(); else stop();
+    };
 
     const onResize = () => { stageRect = measure(); };
-    const onVisibility = () => (document.hidden ? stop() : start());
     window.addEventListener("resize", onResize);
     window.addEventListener("rtmss:viewport", onResize);
-    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("visibilitychange", sync);
+    const offIdle = onIdleChange(sync);
     reduceMotion.addEventListener?.("change", start);
 
     start();
@@ -405,7 +425,8 @@ export default function useUnitPhysics({ stageRef, unitRefs, layout, tapSignal, 
       stop();
       window.removeEventListener("resize", onResize);
       window.removeEventListener("rtmss:viewport", onResize);
-      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("visibilitychange", sync);
+      offIdle();
       reduceMotion.removeEventListener?.("change", start);
     };
   }, [stageRef, unitRefs, layout, tapSignal, dragRef, focusRef, navRef]);

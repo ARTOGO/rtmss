@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseSrt, cueIndexAt } from "../lib/srt.js";
 import { LEVEL_HZ, levelsFor } from "../data/levels.js";
+import { setBusy } from "../lib/idle.js";
 
 /* ------------------------------------------------------------------
    DetailSheet — the frosted "liquid glass" sheet that rises from the
@@ -144,6 +145,10 @@ export default function DetailSheet({ tour, open, onClose, onStep }) {
       a.removeAttribute("src");
     }
   }, [tour, open, play]);
+
+  /* A visitor listening to an eight-minute interview touches nothing, so
+     playback counts as "someone is here" for the idle watch. */
+  useEffect(() => { setBusy(playing); return () => setBusy(false); }, [playing]);
 
   /* ---- ring glow: read the pre-computed level curve at currentTime ----
      Costs one array lookup per tick. Nothing touches the audio itself, so
