@@ -166,7 +166,13 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("message", (e) => {
   if (!e.data) return;
-  if (e.data.type === "CHECK") {
+  if (e.data.type === "SKIP_WAITING") {
+    // The page asks a worker that has finished installing to take over now.
+    // Calling skipWaiting() from install alone did not reliably promote the new
+    // build out of "waiting"; called here the worker is already in the installed
+    // state, which activates it immediately.
+    self.skipWaiting();
+  } else if (e.data.type === "CHECK") {
     e.waitUntil(ensureAll().then((n) => e.source && e.source.postMessage({ type: "SW_CHECKED", healed: n })));
   } else if (e.data.type === "STATUS") {
     e.waitUntil((async () => {

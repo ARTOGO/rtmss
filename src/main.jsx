@@ -30,10 +30,25 @@ if ("serviceWorker" in navigator && !import.meta.env.DEV) {
       toast("已完成離線安裝，沒有網路也能使用");
     }
   });
+  /* A worker that has finished installing waits for every tab using the old one
+     to close. The exhibition iPad never closes it, so without this nudge a new
+     build would only appear after the app was force-quit. */
+  const takeOver = (sw) => {
+    if (!sw) return;
+    if (sw.state === "installed") { sw.postMessage({ type: "SKIP_WAITING" }); return; }
+    sw.addEventListener("statechange", () => {
+      if (sw.state === "installed") sw.postMessage({ type: "SKIP_WAITING" });
+    });
+  };
+
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).then((reg) => {
       // every start: make sure nothing fell out of the cache
       if (reg.active) reg.active.postMessage({ type: "CHECK" });
+      takeOver(reg.waiting);
+      reg.addEventListener("updatefound", () => takeOver(reg.installing));
+      // ask the server whether there is a newer build at all
+      reg.update().catch(() => { /* offline: nothing to check against */ });
     }).catch((err) => {
       console.warn("[offline] service worker registration failed:", err);
     });
